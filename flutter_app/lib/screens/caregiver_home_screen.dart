@@ -3,11 +3,11 @@ import 'package:flutter/material.dart';
 import '../models/checkin_message.dart';
 import '../widgets/caregiver_nav.dart';
 import '../widgets/screen_frame.dart';
-import 'message_detail_screen.dart';
 
 class CaregiverHomeScreen extends StatelessWidget {
   const CaregiverHomeScreen({
     required this.messages,
+    required this.onMessageSelected,
     required this.onMessageDismissed,
     required this.onFamily,
     this.userName = 'Sarah',
@@ -15,6 +15,7 @@ class CaregiverHomeScreen extends StatelessWidget {
   });
 
   final List<CheckInMessage> messages;
+  final ValueChanged<CheckInMessage> onMessageSelected;
   final ValueChanged<CheckInMessage> onMessageDismissed;
   final VoidCallback onFamily;
   final String userName;
@@ -45,16 +46,7 @@ class CaregiverHomeScreen extends StatelessWidget {
                       padding: const EdgeInsets.only(bottom: 16),
                       child: DashboardMessageCard(
                         message: message,
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) => MessageDetailScreen(
-                                message: message,
-                                onFamily: onFamily,
-                              ),
-                            ),
-                          );
-                        },
+                        onTap: () => onMessageSelected(message),
                         onDismiss: message.actionLabel == null ? null : () => onMessageDismissed(message),
                       ),
                     ),

@@ -4,6 +4,7 @@ enum AppScreen {
   caregiverSignup,
   caregiverHome,
   family,
+  message,
   elderHome,
   recorder,
   delivered,
