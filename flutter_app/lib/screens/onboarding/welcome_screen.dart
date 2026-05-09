@@ -11,11 +11,15 @@ class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({
     required this.onCreateAccount,
     required this.onSignIn,
+    this.isLoading = false,
+    this.errorText,
     super.key,
   });
 
   final ValueChanged<Role> onCreateAccount;
-  final VoidCallback onSignIn;
+  final Future<void> Function(String userId, String password) onSignIn;
+  final bool isLoading;
+  final String? errorText;
 
   @override
   State<WelcomeScreen> createState() => _WelcomeScreenState();
@@ -23,7 +27,8 @@ class WelcomeScreen extends StatefulWidget {
 
 class _WelcomeScreenState extends State<WelcomeScreen> {
   final TextEditingController _loginUserIdController = TextEditingController();
-  final TextEditingController _loginPasswordController = TextEditingController();
+  final TextEditingController _loginPasswordController =
+      TextEditingController();
   _AuthTab _selectedTab = _AuthTab.signUp;
   Role? _selectedRole;
   bool _showRoleValidation = false;
@@ -60,7 +65,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
           ),
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 220),
-            child: _selectedTab == _AuthTab.signUp ? _buildSignUpContent() : _buildSignInContent(),
+            child: _selectedTab == _AuthTab.signUp
+                ? _buildSignUpContent()
+                : _buildSignInContent(),
           ),
           const TrustFooter(),
         ],
@@ -74,7 +81,12 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 40),
-        const Text('Tell us who you are', style: TextStyle(fontSize: 25, fontWeight: FontWeight.w600, color: Color(0xFF1A1A1A), height: 1.25)),
+        const Text('Tell us who you are',
+            style: TextStyle(
+                fontSize: 25,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF1A1A1A),
+                height: 1.25)),
         const SizedBox(height: 24),
         _RoleCard(
           role: Role.senior,
@@ -101,7 +113,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         ),
         if (_showRoleValidation) ...[
           const SizedBox(height: 12),
-          const Text('Please choose Senior or Caregiver to continue.', style: TextStyle(color: Color(0xFFB42318), fontSize: 15, height: 1.3)),
+          const Text('Please choose Senior or Caregiver to continue.',
+              style: TextStyle(
+                  color: Color(0xFFB42318), fontSize: 15, height: 1.3)),
         ],
         const SizedBox(height: 32),
         _PrimaryWelcomeButton(
@@ -125,9 +139,16 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 38),
-        const Text('Welcome Back', style: TextStyle(fontSize: 27, fontWeight: FontWeight.w700, color: Color(0xFF1A1A1A), height: 1.2)),
+        const Text('Welcome Back',
+            style: TextStyle(
+                fontSize: 27,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF1A1A1A),
+                height: 1.2)),
         const SizedBox(height: 8),
-        const Text('Sign in to continue your care journey.', style: TextStyle(fontSize: 17, color: Color(0xFF6B7280), height: 1.35)),
+        const Text('Sign in to continue your care journey.',
+            style: TextStyle(
+                fontSize: 17, color: Color(0xFF6B7280), height: 1.35)),
         const SizedBox(height: 24),
         _AuthTextField(
           controller: _loginUserIdController,
@@ -140,8 +161,11 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
           placeholder: 'Enter your password',
           obscureText: !_loginPasswordVisible,
           suffixIcon: IconButton(
-            onPressed: () => setState(() => _loginPasswordVisible = !_loginPasswordVisible),
-            icon: Icon(_loginPasswordVisible ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+            onPressed: () =>
+                setState(() => _loginPasswordVisible = !_loginPasswordVisible),
+            icon: Icon(_loginPasswordVisible
+                ? Icons.visibility_off_outlined
+                : Icons.visibility_outlined),
             color: const Color(0xFF6B7280),
             tooltip: _loginPasswordVisible ? 'Hide password' : 'Show password',
           ),
@@ -150,25 +174,39 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
           alignment: Alignment.centerRight,
           child: TextButton(
             onPressed: () {},
-            child: const Text('Forgot password?', style: TextStyle(color: Color(0xFF0B63C9), fontWeight: FontWeight.w600)),
+            child: const Text('Forgot password?',
+                style: TextStyle(
+                    color: Color(0xFF0B63C9), fontWeight: FontWeight.w600)),
           ),
         ),
         if (_showLoginValidation)
           const Padding(
             padding: EdgeInsets.only(bottom: 12),
-            child: Text('Please enter both User ID and Password.', style: TextStyle(color: Color(0xFFB42318), fontSize: 15, height: 1.3)),
+            child: Text('Please enter both User ID and Password.',
+                style: TextStyle(
+                    color: Color(0xFFB42318), fontSize: 15, height: 1.3)),
+          ),
+        if (widget.errorText != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Text(widget.errorText!,
+                style: const TextStyle(
+                    color: Color(0xFFB42318), fontSize: 15, height: 1.3)),
           ),
         _PrimaryWelcomeButton(
-          label: 'Sign In',
-          onPressed: () {
-            final userId = _loginUserIdController.text.trim();
-            final password = _loginPasswordController.text.trim();
-            if (userId.isEmpty || password.isEmpty) {
-              setState(() => _showLoginValidation = true);
-              return;
-            }
-            widget.onSignIn();
-          },
+          label: widget.isLoading ? 'Signing In...' : 'Sign In',
+          onPressed: widget.isLoading
+              ? null
+              : () async {
+                  final userId = _loginUserIdController.text.trim();
+                  final password = _loginPasswordController.text.trim();
+                  if (userId.isEmpty || password.isEmpty) {
+                    setState(() => _showLoginValidation = true);
+                    return;
+                  }
+                  setState(() => _showLoginValidation = false);
+                  await widget.onSignIn(userId, password);
+                },
         ),
         const SizedBox(height: 12),
         Center(
@@ -177,7 +215,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               _selectedTab = _AuthTab.signUp;
               _showLoginValidation = false;
             }),
-            child: const Text('New to CheckIn? Create an account', style: TextStyle(color: Color(0xFF0B63C9), fontWeight: FontWeight.w600)),
+            child: const Text('New to CheckIn? Create an account',
+                style: TextStyle(
+                    color: Color(0xFF0B63C9), fontWeight: FontWeight.w600)),
           ),
         ),
       ],
@@ -203,8 +243,14 @@ class _WelcomeTabs extends StatelessWidget {
       ),
       child: Row(
         children: [
-          _TabOption(label: 'Sign Up', selected: selectedTab == _AuthTab.signUp, onTap: () => onChanged(_AuthTab.signUp)),
-          _TabOption(label: 'Sign In', selected: selectedTab == _AuthTab.signIn, onTap: () => onChanged(_AuthTab.signIn)),
+          _TabOption(
+              label: 'Sign Up',
+              selected: selectedTab == _AuthTab.signUp,
+              onTap: () => onChanged(_AuthTab.signUp)),
+          _TabOption(
+              label: 'Sign In',
+              selected: selectedTab == _AuthTab.signIn,
+              onTap: () => onChanged(_AuthTab.signIn)),
         ],
       ),
     );
@@ -212,7 +258,8 @@ class _WelcomeTabs extends StatelessWidget {
 }
 
 class _TabOption extends StatelessWidget {
-  const _TabOption({required this.label, required this.selected, required this.onTap});
+  const _TabOption(
+      {required this.label, required this.selected, required this.onTap});
 
   final String label;
   final bool selected;
@@ -230,12 +277,20 @@ class _TabOption extends StatelessWidget {
           decoration: BoxDecoration(
             color: selected ? Colors.white : Colors.transparent,
             borderRadius: BorderRadius.circular(24),
-            boxShadow: selected ? const [BoxShadow(color: Color(0x14000000), blurRadius: 8, offset: Offset(0, 2))] : null,
+            boxShadow: selected
+                ? const [
+                    BoxShadow(
+                        color: Color(0x14000000),
+                        blurRadius: 8,
+                        offset: Offset(0, 2))
+                  ]
+                : null,
           ),
           child: Text(
             label,
             style: TextStyle(
-              color: selected ? const Color(0xFF0B63C9) : const Color(0xFF4B5563),
+              color:
+                  selected ? const Color(0xFF0B63C9) : const Color(0xFF4B5563),
               fontWeight: FontWeight.w600,
               fontSize: 14,
               height: 1.2,
@@ -258,7 +313,10 @@ class _HeroCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: const Color(0xFFE5E7EB)),
-        boxShadow: const [BoxShadow(color: Color(0x12000000), blurRadius: 10, offset: Offset(0, 3))],
+        boxShadow: const [
+          BoxShadow(
+              color: Color(0x12000000), blurRadius: 10, offset: Offset(0, 3))
+        ],
       ),
       clipBehavior: Clip.antiAlias,
       child: const Padding(
@@ -307,28 +365,51 @@ class _RoleCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: selected ? const Color(0xFFEAF3FF) : Colors.white,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: selected ? const Color(0xFF0B63C9) : const Color(0xFFE5E7EB), width: selected ? 1.6 : 1.1),
-            boxShadow: const [BoxShadow(color: Color(0x0F000000), blurRadius: 10, offset: Offset(0, 2))],
+            border: Border.all(
+                color: selected
+                    ? const Color(0xFF0B63C9)
+                    : const Color(0xFFE5E7EB),
+                width: selected ? 1.6 : 1.1),
+            boxShadow: const [
+              BoxShadow(
+                  color: Color(0x0F000000),
+                  blurRadius: 10,
+                  offset: Offset(0, 2))
+            ],
           ),
           child: Row(
             children: [
-              CircleAvatar(radius: 28, backgroundColor: const Color(0xFFEAF3FF), child: Icon(icon, color: const Color(0xFF0B63C9), size: 28)),
+              CircleAvatar(
+                  radius: 28,
+                  backgroundColor: const Color(0xFFEAF3FF),
+                  child: Icon(icon, color: const Color(0xFF0B63C9), size: 28)),
               const SizedBox(width: 23),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w400, color: Color(0xFF1A1A1A), height: 1.22)),
+                    Text(title,
+                        style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w400,
+                            color: Color(0xFF1A1A1A),
+                            height: 1.22)),
                     const SizedBox(height: 6),
-                    Text(subtitle, style: const TextStyle(fontSize: 17, color: Color(0xFF4B5563), fontWeight: FontWeight.w400, height: 1.28)),
+                    Text(subtitle,
+                        style: const TextStyle(
+                            fontSize: 17,
+                            color: Color(0xFF4B5563),
+                            fontWeight: FontWeight.w400,
+                            height: 1.28)),
                   ],
                 ),
               ),
               AnimatedOpacity(
                 duration: const Duration(milliseconds: 160),
                 opacity: selected ? 1 : 0,
-                child: const Icon(Icons.check_circle_rounded, color: Color(0xFF0B63C9), size: 24),
+                child: const Icon(Icons.check_circle_rounded,
+                    color: Color(0xFF0B63C9), size: 24),
               ),
             ],
           ),
@@ -342,14 +423,17 @@ class _PrimaryWelcomeButton extends StatelessWidget {
   const _PrimaryWelcomeButton({required this.label, required this.onPressed});
 
   final String label;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(30),
-        boxShadow: const [BoxShadow(color: Color(0x2A0B63C9), blurRadius: 9, offset: Offset(0, 4))],
+        boxShadow: const [
+          BoxShadow(
+              color: Color(0x2A0B63C9), blurRadius: 9, offset: Offset(0, 4))
+        ],
       ),
       child: ElevatedButton(
         onPressed: onPressed,
@@ -358,8 +442,10 @@ class _PrimaryWelcomeButton extends StatelessWidget {
           foregroundColor: Colors.white,
           elevation: 0,
           minimumSize: const Size.fromHeight(60),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-          textStyle: const TextStyle(fontSize: 23, fontWeight: FontWeight.w600, height: 1.15),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+          textStyle: const TextStyle(
+              fontSize: 23, fontWeight: FontWeight.w600, height: 1.15),
         ),
         child: Text(label),
       ),
@@ -395,7 +481,8 @@ class _AuthTextField extends StatelessWidget {
           suffixIcon: suffixIcon,
           filled: true,
           fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(18),
             borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
@@ -453,22 +540,32 @@ class _CareIllustrationPainter extends CustomPainter {
     final w = size.width;
     final h = size.height;
     final paint = Paint()..isAntiAlias = true;
-    final sofa = RRect.fromRectAndRadius(Rect.fromLTWH(w * .18, h * .54, w * .70, h * .25), const Radius.circular(18));
+    final sofa = RRect.fromRectAndRadius(
+        Rect.fromLTWH(w * .18, h * .54, w * .70, h * .25),
+        const Radius.circular(18));
     paint.color = const Color(0xFFAA9B90);
     canvas.drawRRect(sofa, paint);
     canvas.drawRRect(sofa, stroke);
 
     paint.color = const Color(0xFFC0B2A6);
-    final leftCushion = RRect.fromRectAndRadius(Rect.fromLTWH(w * .22, h * .58, w * .25, h * .18), const Radius.circular(12));
-    final rightCushion = RRect.fromRectAndRadius(Rect.fromLTWH(w * .52, h * .58, w * .27, h * .18), const Radius.circular(12));
+    final leftCushion = RRect.fromRectAndRadius(
+        Rect.fromLTWH(w * .22, h * .58, w * .25, h * .18),
+        const Radius.circular(12));
+    final rightCushion = RRect.fromRectAndRadius(
+        Rect.fromLTWH(w * .52, h * .58, w * .27, h * .18),
+        const Radius.circular(12));
     canvas.drawRRect(leftCushion, paint);
     canvas.drawRRect(rightCushion, paint);
     canvas.drawRRect(leftCushion, stroke);
     canvas.drawRRect(rightCushion, stroke);
 
     paint.color = const Color(0xFF8F8179);
-    final leftArm = RRect.fromRectAndRadius(Rect.fromLTWH(w * .14, h * .61, w * .13, h * .18), const Radius.circular(12));
-    final rightArm = RRect.fromRectAndRadius(Rect.fromLTWH(w * .78, h * .59, w * .13, h * .20), const Radius.circular(12));
+    final leftArm = RRect.fromRectAndRadius(
+        Rect.fromLTWH(w * .14, h * .61, w * .13, h * .18),
+        const Radius.circular(12));
+    final rightArm = RRect.fromRectAndRadius(
+        Rect.fromLTWH(w * .78, h * .59, w * .13, h * .20),
+        const Radius.circular(12));
     canvas.drawRRect(leftArm, paint);
     canvas.drawRRect(rightArm, paint);
     canvas.drawRRect(leftArm, stroke);
@@ -584,19 +681,30 @@ class _CareIllustrationPainter extends CustomPainter {
     canvas.drawLine(Offset(w * .68, h * .55), Offset(w * .64, h * .62), stroke);
 
     paint.color = const Color(0xFFE5E7EB);
-    final phone = RRect.fromRectAndRadius(Rect.fromLTWH(w * .60, h * .56, w * .08, h * .11), const Radius.circular(5));
+    final phone = RRect.fromRectAndRadius(
+        Rect.fromLTWH(w * .60, h * .56, w * .08, h * .11),
+        const Radius.circular(5));
     canvas.drawRRect(phone, paint);
     canvas.drawRRect(phone, stroke);
     _drawFace(canvas, Offset(w * .615, h * .418), w * .016, stroke);
     canvas.drawCircle(Offset(w * .58, h * .41), w * .012, stroke);
     canvas.drawCircle(Offset(w * .64, h * .41), w * .012, stroke);
-    canvas.drawLine(Offset(w * .592, h * .41), Offset(w * .628, h * .41), stroke);
+    canvas.drawLine(
+        Offset(w * .592, h * .41), Offset(w * .628, h * .41), stroke);
   }
 
   void _drawFace(Canvas canvas, Offset center, double unit, Paint stroke) {
     canvas.drawCircle(center.translate(-unit, -unit * .25), unit * .18, stroke);
     canvas.drawCircle(center.translate(unit, -unit * .25), unit * .18, stroke);
-    canvas.drawArc(Rect.fromCenter(center: center.translate(0, unit * .75), width: unit * 1.4, height: unit), 0, 3.14, false, stroke);
+    canvas.drawArc(
+        Rect.fromCenter(
+            center: center.translate(0, unit * .75),
+            width: unit * 1.4,
+            height: unit),
+        0,
+        3.14,
+        false,
+        stroke);
   }
 
   @override

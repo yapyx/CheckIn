@@ -18,8 +18,50 @@ class CheckInMessage {
     required this.priority,
     required this.accentColor,
     required this.backgroundColor,
+    this.status = '',
+    this.suggestedAction = '',
+    this.audioUrl = '',
+    this.seniorId = '',
     this.actionLabel,
   });
+
+  factory CheckInMessage.fromApi(Map<String, dynamic> json) {
+    final priority = json['priority'] as String? ?? '';
+    final summary = json['summary'] as String? ?? '';
+    final transcript = json['transcript'] as String? ?? '';
+    final suggestedAction = json['suggested_action'] as String? ?? '';
+    final createdAt = DateTime.tryParse(
+        (json['created_at'] as String? ?? '').replaceFirst('Z', '+00:00'));
+    final isEmergency = priority == 'Emergency';
+
+    return CheckInMessage(
+      id: json['id'] as String? ?? '',
+      kind: isEmergency ? 'Emergency Triage' : 'Care Update',
+      title: isEmergency ? 'Needs attention' : 'Not emergency',
+      time: _relativeTime(createdAt),
+      copy: summary.isNotEmpty
+          ? summary
+          : 'The backend is still processing this voice check-in.',
+      tone: isEmergency ? MessageTone.critical : MessageTone.plain,
+      icon: isEmergency
+          ? Icons.warning_rounded
+          : Icons.check_circle_outline_rounded,
+      transcript: transcript.isNotEmpty ? transcript : 'Transcript pending.',
+      summary: summary.isNotEmpty ? summary : 'AI summary pending.',
+      intent: priority.isNotEmpty ? priority : 'Processing',
+      mood: json['status'] as String? ?? 'processing',
+      priority: priority,
+      accentColor:
+          isEmergency ? const Color(0xFFDC151B) : const Color(0xFF0B63C9),
+      backgroundColor:
+          isEmergency ? const Color(0xFFF1F2F4) : const Color(0xFFFFFFFF),
+      status: json['status'] as String? ?? '',
+      suggestedAction: suggestedAction,
+      audioUrl: json['audio_url'] as String? ?? '',
+      seniorId: json['senior_id'] as String? ?? '',
+      actionLabel: 'Mark as handled',
+    );
+  }
 
   final String id;
   final String kind;
@@ -35,5 +77,18 @@ class CheckInMessage {
   final String priority;
   final Color accentColor;
   final Color backgroundColor;
+  final String status;
+  final String suggestedAction;
+  final String audioUrl;
+  final String seniorId;
   final String? actionLabel;
+}
+
+String _relativeTime(DateTime? createdAt) {
+  if (createdAt == null) return 'Just now';
+  final diff = DateTime.now().difference(createdAt.toLocal());
+  if (diff.inMinutes < 1) return 'Just now';
+  if (diff.inMinutes < 60) return '${diff.inMinutes} mins ago';
+  if (diff.inHours < 24) return '${diff.inHours} hours ago';
+  return '${diff.inDays} days ago';
 }

@@ -27,8 +27,10 @@ class ElderHomeScreen extends StatelessWidget {
         },
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Home'),
-          NavigationDestination(icon: Icon(Icons.monitor_heart_outlined), label: 'Health Logs'),
-          NavigationDestination(icon: Icon(Icons.settings_outlined), label: 'Settings'),
+          NavigationDestination(
+              icon: Icon(Icons.monitor_heart_outlined), label: 'Health Logs'),
+          NavigationDestination(
+              icon: Icon(Icons.settings_outlined), label: 'Settings'),
         ],
       ),
       child: ListView(
@@ -36,11 +38,17 @@ class ElderHomeScreen extends StatelessWidget {
         children: [
           const TopBar(title: 'CheckIn', avatar: 'M'),
           const SizedBox(height: 24),
-          const Text('Hi Mary, ready for your daily check-in?', style: TextStyle(fontSize: 34, fontWeight: FontWeight.w900)),
+          const Text('Hi Mary, ready for your daily check-in?',
+              style: TextStyle(fontSize: 34, fontWeight: FontWeight.w900)),
           const SizedBox(height: 18),
-          const Text('Record a short update for your care team. We will share urgent concerns right away.', style: TextStyle(fontSize: 20, color: Color(0xFF4E535D))),
+          const Text(
+              'Record a short update for your care team. We will share urgent concerns right away.',
+              style: TextStyle(fontSize: 20, color: Color(0xFF4E535D))),
           const SizedBox(height: 36),
-          ElevatedButton.icon(onPressed: onRecord, icon: const Icon(Icons.mic_rounded), label: const Text('Start Voice Check-in')),
+          ElevatedButton.icon(
+              onPressed: onRecord,
+              icon: const Icon(Icons.mic_rounded),
+              label: const Text('Start Voice Check-in')),
           const SizedBox(height: 20),
           const CareStatusCard(),
         ],

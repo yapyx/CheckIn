@@ -24,7 +24,9 @@ class TextEntry extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isMultiline = label.contains('Notes') || label.contains('Specializations');
+    final isMultiline = label.contains('Notes') ||
+        label.contains('Routine') ||
+        label.contains('Specializations');
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TextField(
@@ -39,7 +41,8 @@ class TextEntry extends StatelessWidget {
           suffixIcon: suffixIcon,
           filled: true,
           fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(18),
             borderSide: const BorderSide(color: Color(0xFFE5E7EB)),

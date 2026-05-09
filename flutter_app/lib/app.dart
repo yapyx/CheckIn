@@ -23,16 +23,20 @@ class CheckInApp extends StatelessWidget {
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             minimumSize: const Size.fromHeight(56),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-            textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, height: 1.25),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+            textStyle: const TextStyle(
+                fontSize: 18, fontWeight: FontWeight.w600, height: 1.25),
           ),
         ),
         outlinedButtonTheme: OutlinedButtonThemeData(
           style: OutlinedButton.styleFrom(
             minimumSize: const Size.fromHeight(56),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             side: const BorderSide(color: Color(0xFF9CA8B8)),
-            textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, height: 1.25),
+            textStyle: const TextStyle(
+                fontSize: 18, fontWeight: FontWeight.w600, height: 1.25),
           ),
         ),
       ),

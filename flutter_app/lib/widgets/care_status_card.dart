@@ -17,7 +17,9 @@ class CareStatusCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('I am working now!', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+                  Text('I am working now!',
+                      style:
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
                   Text('Will see your message soon. Sent 10:30 AM'),
                 ],
               ),
