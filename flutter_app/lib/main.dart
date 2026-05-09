@@ -271,31 +271,25 @@ class _WelcomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return _ScreenFrame(
       child: ListView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.fromLTRB(20, 48, 20, 78),
         children: [
           const _BrandHeader(),
-          const SizedBox(height: 20),
+          const SizedBox(height: 34),
           const _HeroCard(),
+          const SizedBox(height: 38),
+          const _WelcomeTabs(),
+          const SizedBox(height: 40),
+          const Text('Tell us who you are', style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800, letterSpacing: -1, color: Color(0xFF111820))),
           const SizedBox(height: 24),
-          SegmentedButton<Role>(
-            segments: const [
-              ButtonSegment(value: Role.elder, label: Text('Sign Up')),
-              ButtonSegment(value: Role.caregiver, label: Text('Sign In')),
-            ],
-            selected: {selectedRole},
-            onSelectionChanged: (selection) => onRoleSelected(selection.first),
-          ),
-          const SizedBox(height: 24),
-          const Text('Tell us who you are', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 16),
           _RoleCard(
             role: Role.elder,
             selectedRole: selectedRole,
-            icon: Icons.directions_walk_rounded,
+            icon: Icons.elderly_rounded,
             title: 'I am an Elder',
             subtitle: 'I want to receive care',
             onTap: onRoleSelected,
           ),
+          const SizedBox(height: 16),
           _RoleCard(
             role: Role.caregiver,
             selectedRole: selectedRole,
@@ -304,9 +298,34 @@ class _WelcomeScreen extends StatelessWidget {
             subtitle: 'I am here to support someone',
             onTap: onRoleSelected,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 32),
           ElevatedButton(onPressed: onCreateAccount, child: const Text('Create New Account')),
           const _TrustFooter(),
+        ],
+      ),
+    );
+  }
+}
+
+class _WelcomeTabs extends StatelessWidget {
+  const _WelcomeTabs();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 50,
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(color: const Color(0xFFE0E1E3), borderRadius: BorderRadius.circular(28)),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              alignment: Alignment.center,
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), boxShadow: const [BoxShadow(color: Color(0x12000000), blurRadius: 4, offset: Offset(0, 2))]),
+              child: const Text('Sign Up', style: TextStyle(color: Color(0xFF006FC9), fontWeight: FontWeight.w800, fontSize: 14)),
+            ),
+          ),
+          const Expanded(child: Center(child: Text('Sign In', style: TextStyle(color: Color(0xFF3F444D), fontWeight: FontWeight.w800, fontSize: 14)))),
         ],
       ),
     );
@@ -592,10 +611,11 @@ class _BrandHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Text('CheckIn', style: TextStyle(fontSize: 46, fontWeight: FontWeight.w900, color: Color(0xFF061734))),
-        Text('Dependable daily care', style: TextStyle(fontSize: 18, color: Color(0xFF68707C))),
+        Text('CheckIn', style: TextStyle(fontSize: 31, fontWeight: FontWeight.w900, color: Color(0xFF061734), letterSpacing: -1.2)),
+        SizedBox(height: 4),
+        Text('Dependable daily care', style: TextStyle(fontSize: 19, color: Color(0xFF40454F), letterSpacing: -.2)),
       ],
     );
   }
@@ -607,17 +627,29 @@ class _HeroCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 190,
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(28), boxShadow: const [BoxShadow(color: Color(0x170B1C34), blurRadius: 24, offset: Offset(0, 14))]),
-      child: const Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.local_grocery_store_rounded, size: 56, color: Color(0xFF0968B8)),
-          SizedBox(width: 24),
-          Icon(Icons.elderly_woman_rounded, size: 72, color: Color(0xFF061734)),
-          SizedBox(width: 24),
-          Icon(Icons.medical_services_rounded, size: 56, color: Color(0xFF22CA62)),
-        ],
+      height: 350,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xFFE5E8ED)),
+        boxShadow: const [BoxShadow(color: Color(0x100B1C34), blurRadius: 3, offset: Offset(0, 1))],
+      ),
+      child: Center(
+        child: Container(
+          width: 180,
+          height: 132,
+          decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFFFFF1D9)),
+          child: const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.shopping_cart_rounded, size: 42, color: Color(0xFFE86F32)),
+              SizedBox(width: 6),
+              Icon(Icons.elderly_woman_rounded, size: 64, color: Color(0xFF1D2940)),
+              SizedBox(width: 6),
+              Icon(Icons.medical_services_rounded, size: 48, color: Color(0xFF76C9D0)),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -636,18 +668,34 @@ class _RoleCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selected = role == selectedRole;
-    return Card(
-      color: selected ? const Color(0xFFE6F1FF) : Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-        side: BorderSide(color: selected ? const Color(0xFF0968B8) : const Color(0xFFC7CEDA), width: selected ? 2 : 1),
-      ),
-      child: ListTile(
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
         onTap: () => onTap(role),
-        leading: CircleAvatar(backgroundColor: const Color(0xFFD7E5FF), child: Icon(icon, color: const Color(0xFF061734))),
-        title: Text(title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
-        subtitle: Text(subtitle),
-        trailing: selected ? const Icon(Icons.check_circle_rounded, color: Color(0xFF0968B8)) : null,
+        child: Container(
+          minHeight: 109,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 22),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(20), border: Border.all(color: selected ? const Color(0xFFC7CEDA) : const Color(0xFFC7CEDA), width: 1.2)),
+          child: Row(
+            children: [
+              CircleAvatar(radius: 28, backgroundColor: const Color(0xFFE8F1FF), child: Icon(icon, color: const Color(0xFF0870C9), size: 30)),
+              const SizedBox(width: 23),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500, letterSpacing: -.6, color: Color(0xFF20242B))),
+                    const SizedBox(height: 3),
+                    Text(subtitle, style: const TextStyle(fontSize: 17, color: Color(0xFF444A55), height: 1.35)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -888,15 +936,19 @@ class _TrustFooter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.only(top: 24),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.shield_outlined, size: 18, color: Color(0xFF4E535D)),
-          SizedBox(width: 8),
-          Text('Government-grade protection', style: TextStyle(color: Color(0xFF4E535D), fontWeight: FontWeight.w700)),
-        ],
+    return Center(
+      child: Container(
+        margin: const EdgeInsets.only(top: 49),
+        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 9),
+        decoration: BoxDecoration(color: const Color(0xFFF0F1F3), border: Border.all(color: const Color(0xFFE1E3E7)), borderRadius: BorderRadius.circular(24)),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.verified_user_outlined, size: 16, color: Color(0xFF444A55)),
+            SizedBox(width: 8),
+            Text('Government-grade protection', style: TextStyle(color: Color(0xFF444A55), fontWeight: FontWeight.w500, fontSize: 14)),
+          ],
+        ),
       ),
     );
   }
