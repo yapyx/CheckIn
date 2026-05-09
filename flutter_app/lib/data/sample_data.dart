@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../models/checkin_message.dart';
+import '../models/family_member.dart';
 
-const familyMembers = ['Grandpa Joe', 'Grandma Mary'];
+const familyMembers = [
+  FamilyMember(userId: 'CS-1021-44', nickname: 'Grandpa Joe'),
+  FamilyMember(userId: 'CS-9942-88', nickname: 'Grandma Mary'),
+];
 
 const sampleMessages = [
   CheckInMessage(

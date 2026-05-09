@@ -15,7 +15,7 @@ class WelcomeScreen extends StatefulWidget {
   });
 
   final ValueChanged<Role> onCreateAccount;
-  final VoidCallback onSignIn;
+  final ValueChanged<Role> onSignIn;
 
   @override
   State<WelcomeScreen> createState() => _WelcomeScreenState();
@@ -26,6 +26,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   final TextEditingController _loginPasswordController = TextEditingController();
   _AuthTab _selectedTab = _AuthTab.signUp;
   Role? _selectedRole;
+  Role _signInRole = Role.caregiver;
   bool _showRoleValidation = false;
   bool _showLoginValidation = false;
   bool _loginPasswordVisible = false;
@@ -129,6 +130,13 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         const SizedBox(height: 8),
         const Text('Sign in to continue your care journey.', style: TextStyle(fontSize: 17, color: Color(0xFF6B7280), height: 1.35)),
         const SizedBox(height: 24),
+        const Text('Sign in as', style: TextStyle(fontSize: 16, color: Color(0xFF0B1F33), fontWeight: FontWeight.w700)),
+        const SizedBox(height: 10),
+        _SignInRoleSelector(
+          selectedRole: _signInRole,
+          onChanged: (role) => setState(() => _signInRole = role),
+        ),
+        const SizedBox(height: 18),
         _AuthTextField(
           controller: _loginUserIdController,
           label: 'User ID',
@@ -167,7 +175,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               setState(() => _showLoginValidation = true);
               return;
             }
-            widget.onSignIn();
+            widget.onSignIn(_signInRole);
           },
         ),
         const SizedBox(height: 12),
@@ -181,6 +189,63 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _SignInRoleSelector extends StatelessWidget {
+  const _SignInRoleSelector({required this.selectedRole, required this.onChanged});
+
+  final Role selectedRole;
+  final ValueChanged<Role> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 48,
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(color: const Color(0xFFE5E7EB), borderRadius: BorderRadius.circular(24)),
+      child: Row(
+        children: [
+          _RoleSegment(label: 'Senior', selected: selectedRole == Role.senior, onTap: () => onChanged(Role.senior)),
+          _RoleSegment(label: 'Caregiver', selected: selectedRole == Role.caregiver, onTap: () => onChanged(Role.caregiver)),
+        ],
+      ),
+    );
+  }
+}
+
+class _RoleSegment extends StatelessWidget {
+  const _RoleSegment({required this.label, required this.selected, required this.onTap});
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(22),
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: selected ? Colors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(22),
+            boxShadow: selected ? const [BoxShadow(color: Color(0x10000000), blurRadius: 8, offset: Offset(0, 2))] : null,
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected ? const Color(0xFF0B63C9) : const Color(0xFF6B7280),
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
