@@ -19,7 +19,8 @@ class FirebaseNotifier:
         senior_name = message.get("senior_name") or "Mum"
         title = f"Triage [{priority.upper()}]: {senior_name}"
         summary = message.get("summary") or "Voice message needs review."
-        android_channel_id = "Emergency" if priority == Priority.EMERGENCY else "CaregiverUpdates"
+        is_emergency = priority == Priority.EMERGENCY
+        android_channel_id = "Emergency" if is_emergency else "CaregiverUpdates"
 
         multicast = messaging.MulticastMessage(
             tokens=tokens,
@@ -27,11 +28,18 @@ class FirebaseNotifier:
             data={
                 "message_id": str(message.get("id") or message.get("message_id") or ""),
                 "priority": str(priority),
+                "repeat": "true" if is_emergency else "false",
                 "click_action": "FLUTTER_NOTIFICATION_CLICK",
             },
             android=messaging.AndroidConfig(
-                priority="high",
-                notification=messaging.AndroidNotification(channel_id=android_channel_id),
+                priority="high" if is_emergency else "normal",
+                notification=messaging.AndroidNotification(
+                    channel_id=android_channel_id,
+                    priority="max" if is_emergency else "default",
+                    vibrate_timings_millis=(
+                        [0, 800, 250, 800, 250, 1200] if is_emergency else None
+                    ),
+                ),
             ),
         )
         messaging.send_each_for_multicast(multicast)

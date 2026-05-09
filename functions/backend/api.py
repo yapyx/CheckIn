@@ -99,6 +99,15 @@ class ApiRouter:
                 )
             )
 
+        fcm_match = re.fullmatch(r"/api/v1/users/([^/]+)/fcm-token", path)
+        if method == "POST" and fcm_match:
+            return JsonResponse(
+                self.service.register_fcm_token(
+                    fcm_match.group(1),
+                    require_string(body, "token"),
+                )
+            )
+
         if method == "POST" and path == "/api/v1/users/link":
             return JsonResponse(
                 self.service.link_users(
@@ -121,6 +130,13 @@ class ApiRouter:
                 self.service.dead_letter(
                     require_string(body, "message_id"),
                     str(body.get("error", "")),
+                )
+            )
+
+        if method == "POST" and path == "/api/v1/notifications/emergency-repeat":
+            return JsonResponse(
+                self.service.repeat_emergency_notification(
+                    require_string(body, "message_id"),
                 )
             )
 

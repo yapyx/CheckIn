@@ -9,6 +9,7 @@ import '../models/role.dart';
 import '../models/signup_form_data.dart';
 import '../services/audio_upload_service.dart';
 import '../services/checkin_api.dart';
+import '../services/checkin_notifications.dart';
 import 'caregiver_home_screen.dart';
 import 'family_screen.dart';
 import 'onboarding/welcome_screen.dart';
@@ -181,6 +182,7 @@ class _CheckInHomeState extends State<CheckInHome> {
       );
       _currentUser = user;
       if (user.role == Role.caregiver) {
+        await _registerCaregiverNotifications(user.id);
         await _loadFeed(caregiverId: user.id, replaceWithEmpty: true);
         _go(AppScreen.caregiverHome);
       } else {
@@ -201,6 +203,7 @@ class _CheckInHomeState extends State<CheckInHome> {
       }
       _currentUser = user;
       if (user.role == Role.caregiver) {
+        await _registerCaregiverNotifications(user.id);
         await _loadFeed(caregiverId: user.id, replaceWithEmpty: true);
         _go(AppScreen.caregiverHome);
       } else {
@@ -259,6 +262,17 @@ class _CheckInHomeState extends State<CheckInHome> {
     final user = _currentUser;
     if (user != null && user.role == Role.senior) return user.id;
     return 'senior-1';
+  }
+
+  Future<void> _registerCaregiverNotifications(String caregiverId) async {
+    try {
+      await CheckInNotifications.registerCaregiverToken(
+        caregiverId: caregiverId,
+        api: _api,
+      );
+    } catch (_) {
+      _showError('Notifications could not be enabled on this device.');
+    }
   }
 
   void _showError(String message) {

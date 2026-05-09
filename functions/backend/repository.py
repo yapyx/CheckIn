@@ -111,6 +111,11 @@ class FirestoreRepository:
     def update_senior_context(self, senior_id: str, context: str) -> None:
         self.client.collection("users").document(senior_id).update({"profile_context": context})
 
+    def add_fcm_token(self, uid: str, token: str) -> None:
+        from firebase_admin import firestore
+
+        self.client.collection("users").document(uid).update({"fcm_tokens": firestore.ArrayUnion([token])})
+
     def list_messages_for_caregiver(self, caregiver_id: str, status: str | None = None, limit: int = 20) -> list[dict[str, Any]]:
         caregiver = self.get_user(caregiver_id)
         if not caregiver:

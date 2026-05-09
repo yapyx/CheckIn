@@ -143,6 +143,15 @@ class CheckInApi {
     });
   }
 
+  Future<void> registerFcmToken({
+    required String userId,
+    required String token,
+  }) async {
+    await _post('/users/$userId/fcm-token', {
+      'token': token,
+    });
+  }
+
   Future<dynamic> _get(String path, Map<String, String> query) async {
     final uri = Uri.parse('$_baseUrl$path').replace(queryParameters: query);
     return _decode(await _client.get(uri));

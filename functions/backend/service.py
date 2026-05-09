@@ -6,6 +6,7 @@ from typing import Any
 from .ai import TriageAnalysisError
 from .auth import hash_password, verify_password
 from .models import MessageStatus, Priority, UserRole, public_message, public_user
+from .repeat_scheduler import NoopRepeatScheduler
 
 
 EMERGENCY_FALLBACK = {
@@ -17,11 +18,19 @@ EMERGENCY_FALLBACK = {
 
 
 class TriageService:
-    def __init__(self, repository: Any, storage: Any, ai_client: Any, notifier: Any):
+    def __init__(
+        self,
+        repository: Any,
+        storage: Any,
+        ai_client: Any,
+        notifier: Any,
+        repeat_scheduler: Any | None = None,
+    ):
         self.repository = repository
         self.storage = storage
         self.ai_client = ai_client
         self.notifier = notifier
+        self.repeat_scheduler = repeat_scheduler or NoopRepeatScheduler()
 
     def ingest(self, senior_id: str, storage_path: str, uploaded_at: datetime | None = None) -> dict[str, str]:
         senior = self.repository.get_user(senior_id)
@@ -132,6 +141,15 @@ class TriageService:
         self.repository.update_message(message_id, {"status": status, "action_taken": action_taken})
         return {"success": True}
 
+    def register_fcm_token(self, user_id: str, token: str) -> dict[str, bool]:
+        user = self.repository.get_user(user_id)
+        if not user:
+            raise ValueError("user_id does not exist")
+        if user.get("role") != UserRole.CAREGIVER:
+            raise ValueError("FCM tokens are only registered for caregivers")
+        self.repository.add_fcm_token(user_id, token)
+        return {"success": True}
+
     def link_users(self, caregiver_id: str, senior_pairing_code: str) -> dict[str, str]:
         caregiver = self.repository.get_user(caregiver_id)
         if not caregiver:
@@ -162,12 +180,33 @@ class TriageService:
         self._notify(updated)
         return public_message(updated)
 
-    def _notify(self, message: dict[str, Any]) -> None:
+    def repeat_emergency_notification(self, message_id: str) -> dict[str, Any]:
+        message = self._get_message_or_raise(message_id)
+        if message.get("priority") != Priority.EMERGENCY:
+            return {"success": True, "repeated": False, "reason": "not emergency"}
+        if message.get("status") == MessageStatus.RESOLVED:
+            return {"success": True, "repeated": False, "reason": "resolved"}
+
+        self._notify(message, schedule_repeat=False)
+        self._schedule_emergency_repeat(message)
+        return {"success": True, "repeated": True}
+
+    def _notify(self, message: dict[str, Any], schedule_repeat: bool = True) -> None:
         tokens = self.repository.get_caregiver_tokens_for_senior(message["senior_id"])
+        if not tokens:
+            return
         try:
             self.notifier.notify_caregivers(tokens, message)
         except Exception as exc:
             self.repository.update_message(message["id"], {"notification_error": str(exc)})
+        if schedule_repeat and message.get("priority") == Priority.EMERGENCY:
+            self._schedule_emergency_repeat(message)
+
+    def _schedule_emergency_repeat(self, message: dict[str, Any]) -> None:
+        try:
+            self.repeat_scheduler.schedule(message["id"])
+        except Exception as exc:
+            self.repository.update_message(message["id"], {"repeat_schedule_error": str(exc)})
 
     def _get_message_or_raise(self, message_id: str) -> dict[str, Any]:
         message = self.repository.get_message(message_id)

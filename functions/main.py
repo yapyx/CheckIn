@@ -7,6 +7,7 @@ from typing import Any
 from backend.ai import OpenAITriageClient
 from backend.api import ApiRouter
 from backend.notifications import FirebaseNotifier
+from backend.repeat_scheduler import CloudTasksRepeatScheduler
 from backend.repository import FirestoreRepository
 from backend.service import TriageService
 from backend.storage import FirebaseStorageGateway
@@ -37,6 +38,7 @@ def build_service() -> TriageService:
         FirebaseStorageGateway(),
         OpenAITriageClient(),
         FirebaseNotifier(),
+        CloudTasksRepeatScheduler(location=FUNCTION_REGION),
     )
 
 
