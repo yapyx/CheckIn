@@ -1,0 +1,26 @@
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.env
+.runtimeconfig.json
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+*.log
+*.wav
+*.ogg
+*.webm
+*.m4a
+
+# Frontend
+node_modules/
+dist/
+build/
+.vite/
+.next/
+coverage/
+
+# OS/editor
+.DS_Store
+Thumbs.db
