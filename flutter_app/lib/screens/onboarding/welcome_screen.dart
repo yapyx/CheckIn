@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../models/role.dart';
+import '../../models/signup_form_data.dart';
 import '../../widgets/brand_header.dart';
 import '../../widgets/screen_frame.dart';
 import '../../widgets/trust_footer.dart';
@@ -11,15 +12,11 @@ class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({
     required this.onCreateAccount,
     required this.onSignIn,
-    this.isLoading = false,
-    this.errorText,
     super.key,
   });
 
   final ValueChanged<Role> onCreateAccount;
-  final Future<void> Function(String userId, String password) onSignIn;
-  final bool isLoading;
-  final String? errorText;
+  final ValueChanged<LoginFormData> onSignIn;
 
   @override
   State<WelcomeScreen> createState() => _WelcomeScreenState();
@@ -31,6 +28,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       TextEditingController();
   _AuthTab _selectedTab = _AuthTab.signUp;
   Role? _selectedRole;
+  Role _signInRole = Role.caregiver;
   bool _showRoleValidation = false;
   bool _showLoginValidation = false;
   bool _loginPasswordVisible = false;
@@ -150,6 +148,17 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             style: TextStyle(
                 fontSize: 17, color: Color(0xFF6B7280), height: 1.35)),
         const SizedBox(height: 24),
+        const Text('Sign in as',
+            style: TextStyle(
+                fontSize: 16,
+                color: Color(0xFF0B1F33),
+                fontWeight: FontWeight.w700)),
+        const SizedBox(height: 10),
+        _SignInRoleSelector(
+          selectedRole: _signInRole,
+          onChanged: (role) => setState(() => _signInRole = role),
+        ),
+        const SizedBox(height: 18),
         _AuthTextField(
           controller: _loginUserIdController,
           label: 'User ID',
@@ -186,27 +195,21 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 style: TextStyle(
                     color: Color(0xFFB42318), fontSize: 15, height: 1.3)),
           ),
-        if (widget.errorText != null)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Text(widget.errorText!,
-                style: const TextStyle(
-                    color: Color(0xFFB42318), fontSize: 15, height: 1.3)),
-          ),
         _PrimaryWelcomeButton(
-          label: widget.isLoading ? 'Signing In...' : 'Sign In',
-          onPressed: widget.isLoading
-              ? null
-              : () async {
-                  final userId = _loginUserIdController.text.trim();
-                  final password = _loginPasswordController.text.trim();
-                  if (userId.isEmpty || password.isEmpty) {
-                    setState(() => _showLoginValidation = true);
-                    return;
-                  }
-                  setState(() => _showLoginValidation = false);
-                  await widget.onSignIn(userId, password);
-                },
+          label: 'Sign In',
+          onPressed: () {
+            final userId = _loginUserIdController.text.trim();
+            final password = _loginPasswordController.text.trim();
+            if (userId.isEmpty || password.isEmpty) {
+              setState(() => _showLoginValidation = true);
+              return;
+            }
+            widget.onSignIn(LoginFormData(
+              role: _signInRole,
+              userId: userId,
+              password: password,
+            ));
+          },
         ),
         const SizedBox(height: 12),
         Center(
@@ -221,6 +224,81 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _SignInRoleSelector extends StatelessWidget {
+  const _SignInRoleSelector(
+      {required this.selectedRole, required this.onChanged});
+
+  final Role selectedRole;
+  final ValueChanged<Role> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 48,
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+          color: const Color(0xFFE5E7EB),
+          borderRadius: BorderRadius.circular(24)),
+      child: Row(
+        children: [
+          _RoleSegment(
+              label: 'Senior',
+              selected: selectedRole == Role.senior,
+              onTap: () => onChanged(Role.senior)),
+          _RoleSegment(
+              label: 'Caregiver',
+              selected: selectedRole == Role.caregiver,
+              onTap: () => onChanged(Role.caregiver)),
+        ],
+      ),
+    );
+  }
+}
+
+class _RoleSegment extends StatelessWidget {
+  const _RoleSegment(
+      {required this.label, required this.selected, required this.onTap});
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(22),
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: selected ? Colors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(22),
+            boxShadow: selected
+                ? const [
+                    BoxShadow(
+                        color: Color(0x10000000),
+                        blurRadius: 8,
+                        offset: Offset(0, 2))
+                  ]
+                : null,
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color:
+                  selected ? const Color(0xFF0B63C9) : const Color(0xFF6B7280),
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -423,7 +501,7 @@ class _PrimaryWelcomeButton extends StatelessWidget {
   const _PrimaryWelcomeButton({required this.label, required this.onPressed});
 
   final String label;
-  final VoidCallback? onPressed;
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {

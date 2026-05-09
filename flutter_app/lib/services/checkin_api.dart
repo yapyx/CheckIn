@@ -74,6 +74,25 @@ class CheckInApi {
     return CheckInMessage.fromApi(response);
   }
 
+  Future<CheckInMessage> transcribeMessage(String messageId) async {
+    final response = await _post('/triage/transcribe', {
+      'message_id': messageId,
+    });
+    return CheckInMessage.fromApi(response);
+  }
+
+  Future<CheckInMessage> runManualTriage({
+    required String seniorId,
+    required String storagePath,
+  }) async {
+    final ingest = await ingestTriage(
+      seniorId: seniorId,
+      storagePath: storagePath,
+    );
+    await transcribeMessage(ingest.messageId);
+    return analyzeMessage(ingest.messageId);
+  }
+
   Future<List<CheckInMessage>> fetchFeed({
     required String caregiverId,
     String status = 'unread',

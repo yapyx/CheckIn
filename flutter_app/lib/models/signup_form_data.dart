@@ -1,3 +1,5 @@
+import 'role.dart';
+
 class SignupFormData {
   const SignupFormData({
     required this.userId,
@@ -12,4 +14,16 @@ class SignupFormData {
   final String displayName;
   final String profileContext;
   final String occupation;
+}
+
+class LoginFormData {
+  const LoginFormData({
+    required this.role,
+    required this.userId,
+    required this.password,
+  });
+
+  final Role role;
+  final String userId;
+  final String password;
 }

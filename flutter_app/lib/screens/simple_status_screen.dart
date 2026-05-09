@@ -29,10 +29,7 @@ class SimpleStatusScreen extends StatelessWidget {
             const Spacer(),
             Center(child: Icon(icon, size: 92, color: const Color(0xFF0968B8))),
             const SizedBox(height: 24),
-            Text(body,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                    fontSize: 22, color: Color(0xFF4E535D), height: 1.4)),
+            Text(body, textAlign: TextAlign.center, style: const TextStyle(fontSize: 22, color: Color(0xFF4E535D), height: 1.4)),
             const Spacer(),
           ],
         ),

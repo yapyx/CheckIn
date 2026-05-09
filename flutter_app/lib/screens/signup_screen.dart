@@ -22,7 +22,7 @@ class SignupScreen extends StatefulWidget {
   }) : kind = RegistrationKind.caregiver;
 
   final RegistrationKind kind;
-  final Future<void> Function(SignupFormData data) onCreate;
+  final ValueChanged<SignupFormData> onCreate;
   final VoidCallback onCancel;
 
   @override
@@ -32,16 +32,13 @@ class SignupScreen extends StatefulWidget {
 class _SignupScreenState extends State<SignupScreen> {
   final TextEditingController _userIdController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _displayNameController = TextEditingController();
   final TextEditingController _ageController = TextEditingController();
-  final TextEditingController _conditionsController = TextEditingController();
+  final TextEditingController _healthController = TextEditingController();
   final TextEditingController _notesController = TextEditingController();
   final TextEditingController _specializationsController =
       TextEditingController();
   bool _passwordVisible = false;
   bool _agreed = false;
-  bool _isSubmitting = false;
-  String? _errorText;
   String _occupation = 'Nurse';
 
   bool get _isSenior => widget.kind == RegistrationKind.senior;
@@ -50,9 +47,8 @@ class _SignupScreenState extends State<SignupScreen> {
   void dispose() {
     _userIdController.dispose();
     _passwordController.dispose();
-    _displayNameController.dispose();
     _ageController.dispose();
-    _conditionsController.dispose();
+    _healthController.dispose();
     _notesController.dispose();
     _specializationsController.dispose();
     super.dispose();
@@ -83,18 +79,8 @@ class _SignupScreenState extends State<SignupScreen> {
           ),
           const SizedBox(height: 24),
           if (_isSenior) ..._seniorFields() else ..._caregiverFields(),
-          if (_errorText != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Text(_errorText!,
-                  style: const TextStyle(
-                      color: Color(0xFFB42318), fontSize: 15, height: 1.3)),
-            ),
           const SizedBox(height: 8),
-          _PrimaryFormButton(
-            label: _isSubmitting ? 'Creating...' : 'Create',
-            onPressed: _isSubmitting ? null : _submit,
-          ),
+          _PrimaryFormButton(onPressed: _submit),
           const SizedBox(height: 12),
           OutlinedButton(
             onPressed: widget.onCancel,
@@ -109,13 +95,14 @@ class _SignupScreenState extends State<SignupScreen> {
   List<Widget> _seniorFields() {
     return [
       TextEntry(
-          label: 'User ID',
-          placeholder: 'e.g. senior-mary',
-          controller: _userIdController),
+        controller: _userIdController,
+        label: 'User ID',
+        placeholder: 'Enter your unique ID',
+      ),
       TextEntry(
+        controller: _passwordController,
         label: 'Create Password',
         placeholder: 'Choose a safe password',
-        controller: _passwordController,
         obscureText: !_passwordVisible,
         suffixIcon: _PasswordToggle(
           visible: _passwordVisible,
@@ -123,45 +110,41 @@ class _SignupScreenState extends State<SignupScreen> {
         ),
       ),
       TextEntry(
-          label: 'Display Name',
-          placeholder: 'e.g. Mary Tan',
-          controller: _displayNameController),
+        controller: _ageController,
+        label: 'Age',
+        placeholder: 'e.g. 75',
+        keyboardType: TextInputType.number,
+      ),
       TextEntry(
-          label: 'Age',
-          placeholder: 'e.g. 75',
-          controller: _ageController,
-          keyboardType: TextInputType.number),
+        controller: _healthController,
+        label: 'Health Conditions',
+        placeholder: 'e.g. Hypertension, Diabetes',
+      ),
       TextEntry(
-          label: 'Health Conditions',
-          placeholder: 'e.g. Hypertension, Diabetes',
-          controller: _conditionsController),
-      TextEntry(
-          label: 'Routine / Other Information',
-          placeholder: 'e.g. Lives alone, morning medication at 8am',
-          controller: _notesController),
+        controller: _notesController,
+        label: 'Notes / Other Information',
+        placeholder: 'Anything else we should know?',
+      ),
     ];
   }
 
   List<Widget> _caregiverFields() {
     return [
       TextEntry(
-          label: 'User ID',
-          placeholder: 'e.g. caregiver-sarah',
-          controller: _userIdController),
+        controller: _userIdController,
+        label: 'User ID',
+        placeholder: 'Enter your official staff ID',
+      ),
       TextEntry(
+        controller: _passwordController,
         label: 'Create Password',
         placeholder: 'Minimum 12 characters',
-        controller: _passwordController,
         obscureText: !_passwordVisible,
         suffixIcon: _PasswordToggle(
           visible: _passwordVisible,
           onPressed: () => setState(() => _passwordVisible = !_passwordVisible),
         ),
       ),
-      TextEntry(
-          label: 'Display Name',
-          placeholder: 'e.g. Sarah Lim',
-          controller: _displayNameController),
       Padding(
         padding: const EdgeInsets.only(bottom: 16),
         child: DropdownButtonFormField<String>(
@@ -199,9 +182,10 @@ class _SignupScreenState extends State<SignupScreen> {
         ),
       ),
       TextEntry(
-          label: 'Others/Specializations',
-          placeholder: 'List relationship or certifications',
-          controller: _specializationsController),
+        controller: _specializationsController,
+        label: 'Others/Specializations',
+        placeholder: 'List certifications (e.g., Dementia Care)',
+      ),
       CheckboxListTile(
         value: _agreed,
         onChanged: (value) => setState(() => _agreed = value ?? false),
@@ -216,55 +200,24 @@ class _SignupScreenState extends State<SignupScreen> {
     ];
   }
 
-  Future<void> _submit() async {
-    final userId = _userIdController.text.trim();
-    final password = _passwordController.text.trim();
-    if (userId.isEmpty || password.isEmpty) {
-      setState(() => _errorText = 'Please enter a User ID and Password.');
-      return;
-    }
-    if (password.length < 8) {
-      setState(() => _errorText = 'Password must be at least 8 characters.');
-      return;
-    }
-    if (!_isSenior && !_agreed) {
-      setState(
-          () => _errorText = 'Please agree to the Data Processing Agreement.');
-      return;
-    }
-
-    final contextParts = [
+  void _submit() {
+    final profileParts = <String>[
       if (_ageController.text.trim().isNotEmpty)
         'Age: ${_ageController.text.trim()}',
-      if (_conditionsController.text.trim().isNotEmpty)
-        'Health conditions: ${_conditionsController.text.trim()}',
-      if (_notesController.text.trim().isNotEmpty) _notesController.text.trim(),
+      if (_healthController.text.trim().isNotEmpty)
+        'Health conditions: ${_healthController.text.trim()}',
+      if (_notesController.text.trim().isNotEmpty)
+        'Notes: ${_notesController.text.trim()}',
     ];
-
-    setState(() {
-      _isSubmitting = true;
-      _errorText = null;
-    });
-    try {
-      await widget.onCreate(
-        SignupFormData(
-          userId: userId,
-          password: password,
-          displayName: _displayNameController.text.trim(),
-          profileContext: contextParts.join('. '),
-          occupation: _isSenior
-              ? ''
-              : [_occupation, _specializationsController.text.trim()]
-                  .where((item) => item.isNotEmpty)
-                  .join(' - '),
-        ),
-      );
-    } catch (error) {
-      if (!mounted) return;
-      setState(() => _errorText = error.toString());
-    } finally {
-      if (mounted) setState(() => _isSubmitting = false);
-    }
+    widget.onCreate(SignupFormData(
+      userId: _userIdController.text.trim(),
+      password: _passwordController.text.trim(),
+      displayName: _userIdController.text.trim(),
+      profileContext: profileParts.join('\n'),
+      occupation: _isSenior
+          ? ''
+          : '$_occupation ${_specializationsController.text.trim()}'.trim(),
+    ));
   }
 }
 
@@ -287,10 +240,9 @@ class _PasswordToggle extends StatelessWidget {
 }
 
 class _PrimaryFormButton extends StatelessWidget {
-  const _PrimaryFormButton({required this.label, required this.onPressed});
+  const _PrimaryFormButton({required this.onPressed});
 
-  final String label;
-  final VoidCallback? onPressed;
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -303,7 +255,7 @@ class _PrimaryFormButton extends StatelessWidget {
         elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(29)),
       ),
-      child: Text(label),
+      child: const Text('Create'),
     );
   }
 }

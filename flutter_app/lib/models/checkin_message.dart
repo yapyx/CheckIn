@@ -30,12 +30,14 @@ class CheckInMessage {
     final summary = json['summary'] as String? ?? '';
     final transcript = json['transcript'] as String? ?? '';
     final suggestedAction = json['suggested_action'] as String? ?? '';
-    final createdAt = DateTime.tryParse(
-        (json['created_at'] as String? ?? '').replaceFirst('Z', '+00:00'));
-    final isEmergency = priority == 'Emergency';
+    final createdAtValue = json['created_at'];
+    final createdAt = createdAtValue is String
+        ? DateTime.tryParse(createdAtValue.replaceFirst('Z', '+00:00'))
+        : null;
+    final isEmergency = priority.toLowerCase() == 'emergency';
 
     return CheckInMessage(
-      id: json['id'] as String? ?? '',
+      id: json['id'] as String? ?? json['message_id'] as String? ?? '',
       kind: isEmergency ? 'Emergency Triage' : 'Care Update',
       title: isEmergency ? 'Needs attention' : 'Not emergency',
       time: _relativeTime(createdAt),
@@ -50,7 +52,7 @@ class CheckInMessage {
       summary: summary.isNotEmpty ? summary : 'AI summary pending.',
       intent: priority.isNotEmpty ? priority : 'Processing',
       mood: json['status'] as String? ?? 'processing',
-      priority: priority,
+      priority: priority.isNotEmpty ? priority : 'Processing',
       accentColor:
           isEmergency ? const Color(0xFFDC151B) : const Color(0xFF0B63C9),
       backgroundColor:

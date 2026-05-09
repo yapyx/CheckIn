@@ -4,16 +4,13 @@ import '../data/sample_data.dart';
 import '../models/app_screen.dart';
 import '../models/app_user.dart';
 import '../models/checkin_message.dart';
+import '../models/family_member.dart';
 import '../models/role.dart';
 import '../models/signup_form_data.dart';
-import '../services/audio_upload_service_stub.dart'
-    if (dart.library.io) '../services/audio_upload_service_io.dart';
+import '../services/audio_upload_service.dart';
 import '../services/checkin_api.dart';
 import 'caregiver_home_screen.dart';
-import 'delivered_screen.dart';
-import 'elder_home_screen.dart';
 import 'family_screen.dart';
-import 'message_detail_screen.dart';
 import 'onboarding/welcome_screen.dart';
 import 'recorder_screen.dart';
 import 'signup_screen.dart';
@@ -27,32 +24,45 @@ class CheckInHome extends StatefulWidget {
 }
 
 class _CheckInHomeState extends State<CheckInHome> {
-  final CheckInApi _api = CheckInApi();
-  final CheckInAudioService _audioService = CheckInAudioService();
   AppScreen _screen = AppScreen.welcome;
   List<CheckInMessage> _caregiverMessages = List.of(sampleMessages);
-  CheckInMessage? _selectedMessage;
-  AppUser? _currentUser;
-  String? _recordedAudioPath;
+  List<FamilyMember> _familyMembers = familyMembers
+      .map((name) => FamilyMember(userId: name, nickname: name))
+      .toList();
   bool _isRecording = false;
-  bool _isAuthLoading = false;
-  bool _isFeedLoading = false;
-  bool _isSendingCheckIn = false;
-  bool _isUpdatingMessage = false;
-  bool _isLinkingSenior = false;
-  String? _authError;
-  String? _feedError;
-  String? _sendError;
-  String? _linkError;
+  bool _isSendingRecording = false;
+  String? _recordingPath;
+  AppUser? _currentUser;
+  final CheckInApi _api = CheckInApi();
+  final CheckInAudioService _audioService = CheckInAudioService();
 
-  void _go(AppScreen screen) {
-    setState(() => _screen = screen);
+  @override
+  void initState() {
+    super.initState();
+    _loadFeed();
   }
 
   @override
   void dispose() {
     _audioService.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadFeed(
+      {String caregiverId = 'demo-caregiver',
+      bool replaceWithEmpty = false}) async {
+    try {
+      final messages = await _api.fetchFeed(caregiverId: caregiverId);
+      if (messages.isNotEmpty || replaceWithEmpty) {
+        setState(() => _caregiverMessages = messages);
+      }
+    } catch (_) {
+      // Keep sample data on any error (minimal change requirement).
+    }
+  }
+
+  void _go(AppScreen screen) {
+    setState(() => _screen = screen);
   }
 
   @override
@@ -72,301 +82,189 @@ class _CheckInHomeState extends State<CheckInHome> {
           onCreateAccount: (role) => _go(role == Role.senior
               ? AppScreen.seniorSignup
               : AppScreen.caregiverSignup),
-          onSignIn: _login,
-          isLoading: _isAuthLoading,
-          errorText: _authError,
+          onSignIn: _signIn,
         );
       case AppScreen.seniorSignup:
         return SignupScreen.senior(
-          onCreate: _signUpSenior,
+          onCreate: (data) => _createAccount(Role.senior, data),
           onCancel: () => _go(AppScreen.welcome),
         );
       case AppScreen.caregiverSignup:
         return SignupScreen.caregiver(
-          onCreate: _signUpCaregiver,
+          onCreate: (data) => _createAccount(Role.caregiver, data),
           onCancel: () => _go(AppScreen.welcome),
         );
       case AppScreen.caregiverHome:
         return CaregiverHomeScreen(
           messages: _caregiverMessages,
-          onMessageSelected: _openMessage,
           onMessageDismissed: _dismissMessage,
           onFamily: () => _go(AppScreen.family),
-          onRefresh: _refreshFeed,
-          userName: _currentUser?.displayName.isNotEmpty == true
-              ? _currentUser!.displayName
-              : _currentUser?.id ?? 'Caregiver',
-          isLoading: _isFeedLoading,
-          errorText: _feedError,
+        );
+      case AppScreen.message:
+        return SimpleStatusScreen(
+          title: 'Message',
+          icon: Icons.message_outlined,
+          body: 'Message details are not available in this demo.',
+          onBack: () => _go(AppScreen.caregiverHome),
         );
       case AppScreen.family:
         return FamilyScreen(
-          family: _linkedFamilyLabels(),
+          family: _familyMembers,
+          onMemberAdded: _addFamilyMember,
           onHome: () => _go(AppScreen.caregiverHome),
-          onLinkSenior: _linkSenior,
-          isLinking: _isLinkingSenior,
-          linkError: _linkError,
-        );
-      case AppScreen.message:
-        return MessageDetailScreen(
-          message: _selectedMessage ?? sampleMessages.first,
-          onBack: () => _go(AppScreen.caregiverHome),
-          onAcknowledge: () => _updateSelectedMessageStatus('acknowledged'),
-          onResolve: () => _updateSelectedMessageStatus('resolved'),
-          isUpdating: _isUpdatingMessage,
         );
       case AppScreen.elderHome:
-        return ElderHomeScreen(
-          onRecord: () => _go(AppScreen.recorder),
-          onHealth: () => _go(AppScreen.health),
-          onSettings: () => _go(AppScreen.settings),
-        );
       case AppScreen.recorder:
+      case AppScreen.delivered:
+      case AppScreen.health:
+      case AppScreen.settings:
         return RecorderScreen(
           isRecording: _isRecording,
           onToggleRecording: _toggleRecording,
-          onDone: _sendCheckIn,
-          seniorId: _currentUser?.id ?? 'senior-1',
-          hasRecording: _recordedAudioPath != null,
-          isSending: _isSendingCheckIn,
-          errorText: _sendError,
-        );
-      case AppScreen.delivered:
-        return DeliveredScreen(onHome: () => _go(AppScreen.elderHome));
-      case AppScreen.health:
-        return SimpleStatusScreen(
-          title: 'Health Logs',
-          icon: Icons.monitor_heart_outlined,
-          body:
-              'Medication, mood, and symptom trends will appear here after daily voice check-ins are processed.',
-          onBack: () => _go(AppScreen.elderHome),
-        );
-      case AppScreen.settings:
-        return SimpleStatusScreen(
-          title: 'Settings',
-          icon: Icons.settings_outlined,
-          body:
-              'Manage trusted contacts, emergency preferences, reminders, and accessibility options.',
-          onBack: () => _go(AppScreen.elderHome),
         );
     }
-  }
-
-  void _openMessage(CheckInMessage message) {
-    setState(() {
-      _selectedMessage = message;
-      _screen = AppScreen.message;
-    });
   }
 
   void _dismissMessage(CheckInMessage message) {
     setState(() {
       _caregiverMessages =
           _caregiverMessages.where((item) => item.id != message.id).toList();
-      if (_selectedMessage?.id == message.id) {
-        _selectedMessage = null;
+    });
+    _api
+        .updateMessageStatus(
+      messageId: message.id,
+      status: 'acknowledged',
+      actionTaken: 'Marked as handled from caregiver dashboard.',
+    )
+        .catchError((_) {
+      if (mounted) {
+        setState(() => _caregiverMessages = [..._caregiverMessages, message]);
+        _showError('Could not update message status.');
       }
     });
   }
 
-  Future<void> _signUp(Role role, SignupFormData data) async {
-    final user = await _api.signUp(
-      role: role,
-      userId: data.userId,
-      password: data.password,
-      displayName: data.displayName,
-      profileContext: data.profileContext,
-      occupation: data.occupation,
-    );
-    setState(() {
+  Future<bool> _addFamilyMember(FamilyMember member) async {
+    final caregiverId = _currentUser?.id;
+    if (caregiverId == null || _currentUser?.role != Role.caregiver) {
+      _showError('Please sign in as a caregiver first.');
+      return false;
+    }
+
+    try {
+      final linkedSeniorId = await _api.linkSenior(
+        caregiverId: caregiverId,
+        seniorPairingCode: member.userId,
+      );
+      final linkedMember = FamilyMember(
+        userId: linkedSeniorId.isEmpty ? member.userId : linkedSeniorId,
+        nickname: member.nickname,
+      );
+      setState(() => _familyMembers = [..._familyMembers, linkedMember]);
+      await _loadFeed(caregiverId: caregiverId, replaceWithEmpty: true);
+      return true;
+    } catch (_) {
+      _showError('Could not link that senior account.');
+      return false;
+    }
+  }
+
+  Future<void> _createAccount(Role role, SignupFormData data) async {
+    try {
+      final user = await _api.signUp(
+        role: role,
+        userId: data.userId,
+        password: data.password,
+        displayName: data.displayName,
+        profileContext: data.profileContext,
+        occupation: data.occupation,
+      );
       _currentUser = user;
-      _authError = null;
-      _screen = user.role == Role.senior
-          ? AppScreen.elderHome
-          : AppScreen.caregiverHome;
-    });
-    if (user.role == Role.caregiver) {
-      await _refreshFeed();
-    }
-  }
-
-  Future<void> _signUpSenior(SignupFormData data) {
-    return _signUp(Role.senior, data);
-  }
-
-  Future<void> _signUpCaregiver(SignupFormData data) {
-    return _signUp(Role.caregiver, data);
-  }
-
-  Future<void> _login(String userId, String password) async {
-    setState(() {
-      _isAuthLoading = true;
-      _authError = null;
-    });
-    try {
-      final user = await _api.login(userId: userId, password: password);
-      setState(() {
-        _currentUser = user;
-        _screen = user.role == Role.senior
-            ? AppScreen.elderHome
-            : AppScreen.caregiverHome;
-      });
       if (user.role == Role.caregiver) {
-        await _refreshFeed();
+        await _loadFeed(caregiverId: user.id, replaceWithEmpty: true);
+        _go(AppScreen.caregiverHome);
+      } else {
+        _go(AppScreen.recorder);
       }
     } catch (error) {
-      if (!mounted) return;
-      setState(() => _authError = error.toString());
-    } finally {
-      if (mounted) setState(() => _isAuthLoading = false);
+      _showError(error.toString());
     }
   }
 
-  Future<void> _refreshFeed() async {
-    final user = _currentUser;
-    if (user == null || user.role != Role.caregiver) return;
-    setState(() {
-      _isFeedLoading = true;
-      _feedError = null;
-    });
+  Future<void> _signIn(LoginFormData data) async {
     try {
-      final messages = await _api.fetchFeed(caregiverId: user.id);
-      if (!mounted) return;
-      setState(() => _caregiverMessages = messages);
+      final user =
+          await _api.login(userId: data.userId, password: data.password);
+      if (user.role != data.role) {
+        _showError('This account is registered as a different role.');
+        return;
+      }
+      _currentUser = user;
+      if (user.role == Role.caregiver) {
+        await _loadFeed(caregiverId: user.id, replaceWithEmpty: true);
+        _go(AppScreen.caregiverHome);
+      } else {
+        _go(AppScreen.recorder);
+      }
     } catch (error) {
-      if (!mounted) return;
-      setState(() => _feedError = error.toString());
-    } finally {
-      if (mounted) setState(() => _isFeedLoading = false);
+      _showError(error.toString());
     }
   }
 
   Future<void> _toggleRecording() async {
-    final user = _currentUser;
-    if (user == null || user.role != Role.senior) {
-      setState(() => _sendError =
-          'Please sign in as a senior before recording a check-in.');
-      return;
-    }
+    if (_isSendingRecording) return;
 
-    setState(() => _sendError = null);
-    try {
-      if (_isRecording) {
-        final path = await _audioService.stopRecording();
-        if (!mounted) return;
+    if (!_isRecording) {
+      try {
+        final path = await _audioService.startRecording(_seniorId);
         setState(() {
-          _isRecording = false;
-          _recordedAudioPath = path;
+          _recordingPath = path;
+          _isRecording = true;
         });
-        return;
+      } catch (error) {
+        _showError(error.toString());
       }
-
-      await _audioService.startRecording(user.id);
-      if (!mounted) return;
-      setState(() {
-        _recordedAudioPath = null;
-        _isRecording = true;
-      });
-    } catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _isRecording = false;
-        _sendError = error.toString();
-      });
-    }
-  }
-
-  Future<void> _sendCheckIn() async {
-    final user = _currentUser;
-    final localPath = _recordedAudioPath;
-    if (user == null || user.role != Role.senior) {
-      setState(() =>
-          _sendError = 'Please sign in as a senior before sending a check-in.');
-      return;
-    }
-    if (localPath == null) {
-      setState(() => _sendError = 'Record a voice check-in before sending.');
       return;
     }
 
     setState(() {
-      _isSendingCheckIn = true;
-      _sendError = null;
+      _isRecording = false;
+      _isSendingRecording = true;
     });
     try {
+      final stoppedPath = await _audioService.stopRecording();
+      final localPath = stoppedPath ?? _recordingPath;
+      if (localPath == null) {
+        throw StateError('No recorded audio was available to upload.');
+      }
       final storagePath = await _audioService.uploadRecording(
-        seniorId: user.id,
+        seniorId: _seniorId,
         localPath: localPath,
       );
-      await _api.ingestTriage(seniorId: user.id, storagePath: storagePath);
-      if (!mounted) return;
-      setState(() {
-        _isRecording = false;
-        _recordedAudioPath = null;
-        _screen = AppScreen.delivered;
-      });
+      if (storagePath.isEmpty) {
+        throw StateError(
+            'Recorded audio upload did not return a storage path.');
+      }
+      _recordingPath = null;
     } catch (error) {
-      if (!mounted) return;
-      setState(() => _sendError = error.toString());
+      _showError(error.toString());
     } finally {
-      if (mounted) setState(() => _isSendingCheckIn = false);
+      if (mounted) {
+        setState(() => _isSendingRecording = false);
+      }
     }
   }
 
-  Future<void> _updateSelectedMessageStatus(String status) async {
-    final message = _selectedMessage;
-    if (message == null) return;
-    setState(() => _isUpdatingMessage = true);
-    try {
-      await _api.updateMessageStatus(
-        messageId: message.id,
-        status: status,
-        actionTaken: status == 'resolved'
-            ? 'Marked as resolved in the Flutter app.'
-            : 'Acknowledged in the Flutter app.',
-      );
-      if (!mounted) return;
-      setState(() {
-        _caregiverMessages =
-            _caregiverMessages.where((item) => item.id != message.id).toList();
-        _selectedMessage = null;
-        _screen = AppScreen.caregiverHome;
-      });
-      await _refreshFeed();
-    } catch (error) {
-      if (!mounted) return;
-      setState(() => _feedError = error.toString());
-    } finally {
-      if (mounted) setState(() => _isUpdatingMessage = false);
-    }
-  }
-
-  Future<void> _linkSenior(String pairingCode) async {
+  String get _seniorId {
     final user = _currentUser;
-    if (user == null || user.role != Role.caregiver) return;
-    setState(() {
-      _isLinkingSenior = true;
-      _linkError = null;
-    });
-    try {
-      await _api.linkSenior(
-          caregiverId: user.id, seniorPairingCode: pairingCode);
-      await _refreshFeed();
-    } catch (error) {
-      if (!mounted) return;
-      setState(() => _linkError = error.toString());
-    } finally {
-      if (mounted) setState(() => _isLinkingSenior = false);
-    }
+    if (user != null && user.role == Role.senior) return user.id;
+    return 'senior-1';
   }
 
-  List<String> _linkedFamilyLabels() {
-    final linked = _caregiverMessages
-        .map((message) => message.seniorId)
-        .where((id) => id.isNotEmpty)
-        .toSet()
-        .toList();
-    if (linked.isEmpty) return familyMembers;
-    return linked;
+  void _showError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message.replaceFirst('Exception: ', ''))),
+    );
   }
 }
