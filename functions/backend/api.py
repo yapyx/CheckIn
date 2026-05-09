@@ -46,6 +46,27 @@ class ApiRouter:
         method = request.method.upper()
         body = _json_body(request)
 
+        if method == "POST" and path == "/api/v1/auth/signup":
+            return JsonResponse(
+                self.service.signup(
+                    require_string(body, "role"),
+                    require_string(body, "user_id"),
+                    require_string(body, "password"),
+                    str(body.get("display_name", "")),
+                    str(body.get("profile_context", "")),
+                    str(body.get("occupation", "")),
+                ),
+                201,
+            )
+
+        if method == "POST" and path == "/api/v1/auth/login":
+            return JsonResponse(
+                self.service.login(
+                    require_string(body, "user_id"),
+                    require_string(body, "password"),
+                )
+            )
+
         if method == "POST" and path == "/api/v1/triage/ingest":
             result = self.service.ingest(
                 require_string(body, "senior_id"),

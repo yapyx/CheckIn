@@ -4,7 +4,8 @@ from datetime import datetime
 from typing import Any
 
 from .ai import TriageAnalysisError
-from .models import MessageStatus, Priority, UserRole, public_message
+from .auth import hash_password, verify_password
+from .models import MessageStatus, Priority, UserRole, public_message, public_user
 
 
 EMERGENCY_FALLBACK = {
@@ -30,6 +31,42 @@ class TriageService:
             raise ValueError("senior_id must belong to a senior user")
         message_id = self.repository.create_triage_message(senior_id, storage_path, uploaded_at)
         return {"message_id": message_id, "status": MessageStatus.PROCESSING}
+
+    def signup(
+        self,
+        role: str,
+        user_id: str,
+        password: str,
+        display_name: str = "",
+        profile_context: str = "",
+        occupation: str = "",
+    ) -> dict[str, Any]:
+        if role not in UserRole.ALL:
+            raise ValueError("role must be senior or caregiver")
+        if "/" in user_id or len(user_id) > 120:
+            raise ValueError("user_id must be a simple id without slashes")
+        if len(password) < 8:
+            raise ValueError("password must be at least 8 characters")
+
+        fields: dict[str, Any] = {
+            "role": role,
+            "display_name": display_name.strip(),
+            "profile_context": profile_context.strip(),
+            "occupation": occupation.strip(),
+            "fcm_tokens": [],
+            "linked_accounts": [],
+            **hash_password(password),
+        }
+        user = self.repository.create_user(user_id, fields)
+        return {"user": public_user(user)}
+
+    def login(self, user_id: str, password: str) -> dict[str, Any]:
+        if "/" in user_id or len(user_id) > 120:
+            raise ValueError("Invalid user id or password")
+        user = self.repository.get_user(user_id)
+        if not user or not verify_password(password, user):
+            raise ValueError("Invalid user id or password")
+        return {"user": public_user(user)}
 
     def transcribe(self, message_id: str) -> dict[str, Any]:
         message = self._get_message_or_raise(message_id)

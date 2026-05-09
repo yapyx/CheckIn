@@ -17,6 +17,60 @@ All routes are served under the `api` Cloud Function. In production, use:
 https://asia-southeast1-checkin-c4d3a.cloudfunctions.net/api/api/v1/...
 ```
 
+### `POST /api/v1/auth/signup`
+
+Creates a senior or caregiver user document with a securely hashed password. Senior accounts receive a pairing code that caregivers can use on the family linking screen.
+
+Request:
+
+```json
+{
+  "role": "senior",
+  "user_id": "senior-mary",
+  "password": "safe-password",
+  "display_name": "Mary Tan",
+  "profile_context": "Lives alone. Takes blood pressure medication at 8am."
+}
+```
+
+Response `201`:
+
+```json
+{
+  "user": {
+    "id": "senior-mary",
+    "role": "senior",
+    "display_name": "Mary Tan",
+    "pairing_code": "CI-123ABC"
+  }
+}
+```
+
+### `POST /api/v1/auth/login`
+
+Verifies a password for an existing account and returns the public user profile.
+
+Request:
+
+```json
+{
+  "user_id": "senior-mary",
+  "password": "safe-password"
+}
+```
+
+Response `200`:
+
+```json
+{
+  "user": {
+    "id": "senior-mary",
+    "role": "senior",
+    "pairing_code": "CI-123ABC"
+  }
+}
+```
+
 ### `POST /api/v1/triage/ingest`
 
 Creates a new `triage_messages` document with `status: "processing"`. Use this when the frontend has already uploaded audio and wants the backend to register the work item. The Storage trigger can also perform ingestion automatically for uploads shaped like `triage_uploads/{senior_id}/{filename}`.

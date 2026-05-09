@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import secrets
+import string
 from datetime import datetime, timezone
 from typing import Any
 
@@ -50,6 +52,29 @@ class FirestoreRepository:
         update = dict(fields)
         update["updated_at"] = self._server_timestamp()
         self.client.collection("triage_messages").document(message_id).update(update)
+
+    def create_user(self, uid: str, fields: dict[str, Any]) -> dict[str, Any]:
+        existing = self.get_user(uid)
+        if existing:
+            raise ValueError("user_id already exists")
+
+        now = self._server_timestamp()
+        document = dict(fields)
+        document.update(
+            {
+                "linked_accounts": document.get("linked_accounts", []),
+                "profile_context": document.get("profile_context", ""),
+                "fcm_tokens": document.get("fcm_tokens", []),
+                "created_at": now,
+                "updated_at": now,
+            }
+        )
+        if document.get("role") == UserRole.SENIOR and not document.get("pairing_code"):
+            document["pairing_code"] = self.generate_pairing_code()
+
+        self.client.collection("users").document(uid).set(document)
+        document["id"] = uid
+        return document
 
     def get_user(self, uid: str) -> dict[str, Any] | None:
         snapshot = self.client.collection("users").document(uid).get()
@@ -125,4 +150,11 @@ class FirestoreRepository:
             return firestore.SERVER_TIMESTAMP
         except Exception:
             return datetime.now(timezone.utc)
+
+    def generate_pairing_code(self) -> str:
+        alphabet = string.ascii_uppercase + string.digits
+        while True:
+            code = "CI-" + "".join(secrets.choice(alphabet) for _ in range(6))
+            if not self.find_senior_by_pairing_code(code):
+                return code
 

@@ -36,6 +36,8 @@ class UserRole:
     SENIOR = "senior"
     CAREGIVER = "caregiver"
 
+    ALL = (SENIOR, CAREGIVER)
+
 
 def require_string(payload: dict[str, Any], key: str) -> str:
     value = payload.get(key)
@@ -52,3 +54,8 @@ def iso_or_value(value: Any) -> Any:
 
 def public_message(message: dict[str, Any]) -> dict[str, Any]:
     return {key: iso_or_value(value) for key, value in message.items()}
+
+
+def public_user(user: dict[str, Any]) -> dict[str, Any]:
+    hidden = {"password_hash", "password_salt", "password_iterations", "fcm_tokens", "created_at", "updated_at"}
+    return {key: iso_or_value(value) for key, value in user.items() if key not in hidden}

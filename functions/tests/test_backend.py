@@ -40,6 +40,19 @@ class FakeRepository:
         }
         self.next_id = 1
 
+    def create_user(self, uid, fields):
+        if uid in self.users:
+            raise ValueError("user_id already exists")
+        user = dict(fields)
+        user.setdefault("linked_accounts", [])
+        user.setdefault("profile_context", "")
+        user.setdefault("fcm_tokens", [])
+        if user.get("role") == "senior":
+            user.setdefault("pairing_code", "PAIR-NEW")
+        user["id"] = uid
+        self.users[uid] = user
+        return user
+
     def create_triage_message(self, senior_id, storage_path, uploaded_at=None):
         message_id = f"message-{self.next_id}"
         self.next_id += 1
@@ -260,6 +273,33 @@ class BackendServiceTests(unittest.TestCase):
         self.assertIn("caregiver-1", repo.users["senior-1"]["linked_accounts"])
         self.assertEqual(repo.users["senior-1"]["profile_context"], "Morning meds at 8am.")
 
+    def test_signup_creates_user_and_hides_password_fields(self):
+        service, repo, _ = self.build_service()
+
+        result = service.signup(
+            "senior",
+            "senior-new",
+            "safe-password",
+            "Mary Tan",
+            "Lives alone.",
+        )
+
+        self.assertEqual(result["user"]["id"], "senior-new")
+        self.assertEqual(result["user"]["role"], "senior")
+        self.assertEqual(result["user"]["pairing_code"], "PAIR-NEW")
+        self.assertNotIn("password_hash", result["user"])
+        self.assertIn("password_hash", repo.users["senior-new"])
+
+    def test_login_rejects_wrong_password(self):
+        service, _, _ = self.build_service()
+        service.signup("caregiver", "caregiver-new", "safe-password")
+
+        result = service.login("caregiver-new", "safe-password")
+        self.assertEqual(result["user"]["id"], "caregiver-new")
+
+        with self.assertRaises(ValueError):
+            service.login("caregiver-new", "wrong-password")
+
 
 class ApiRouterTests(unittest.TestCase):
     def test_ingest_route_returns_accepted(self):
@@ -277,6 +317,21 @@ class ApiRouterTests(unittest.TestCase):
         self.assertIsInstance(response, JsonResponse)
         self.assertEqual(response.status_code, 202)
         self.assertEqual(response.body["status"], MessageStatus.PROCESSING)
+
+    def test_signup_route_creates_account(self):
+        service, _, _ = BackendServiceTests().build_service()
+        router = ApiRouter(service)
+
+        response = router.handle(
+            FakeRequest(
+                "POST",
+                "/api/v1/auth/signup",
+                {"role": "caregiver", "user_id": "caregiver-new", "password": "safe-password"},
+            )
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.body["user"]["id"], "caregiver-new")
 
 
 class OpenAITriageClientTests(unittest.TestCase):
