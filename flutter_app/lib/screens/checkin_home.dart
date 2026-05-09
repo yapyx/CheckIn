@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 import '../data/sample_data.dart';
 import '../models/app_screen.dart';
 import '../models/checkin_message.dart';
+import '../models/family_member.dart';
 import '../models/role.dart';
 import 'caregiver_home_screen.dart';
 import 'delivered_screen.dart';
 import 'elder_home_screen.dart';
 import 'family_screen.dart';
-import 'message_detail_screen.dart';
 import 'onboarding/welcome_screen.dart';
 import 'recorder_screen.dart';
 import 'signup_screen.dart';
@@ -24,7 +24,7 @@ class CheckInHome extends StatefulWidget {
 class _CheckInHomeState extends State<CheckInHome> {
   AppScreen _screen = AppScreen.welcome;
   List<CheckInMessage> _caregiverMessages = List.of(sampleMessages);
-  CheckInMessage? _selectedMessage;
+  List<FamilyMember> _familyMembers = List.of(familyMembers);
   bool _isRecording = false;
 
   void _go(AppScreen screen) {
@@ -46,11 +46,11 @@ class _CheckInHomeState extends State<CheckInHome> {
       case AppScreen.welcome:
         return WelcomeScreen(
           onCreateAccount: (role) => _go(role == Role.senior ? AppScreen.seniorSignup : AppScreen.caregiverSignup),
-          onSignIn: () => _go(AppScreen.caregiverHome),
+          onSignIn: (role) => _go(role == Role.senior ? AppScreen.recorder : AppScreen.caregiverHome),
         );
       case AppScreen.seniorSignup:
         return SignupScreen.senior(
-          onCreate: () => _go(AppScreen.caregiverHome),
+          onCreate: () => _go(AppScreen.recorder),
           onCancel: () => _go(AppScreen.welcome),
         );
       case AppScreen.caregiverSignup:
@@ -61,17 +61,14 @@ class _CheckInHomeState extends State<CheckInHome> {
       case AppScreen.caregiverHome:
         return CaregiverHomeScreen(
           messages: _caregiverMessages,
-          onMessageSelected: _openMessage,
           onMessageDismissed: _dismissMessage,
           onFamily: () => _go(AppScreen.family),
         );
       case AppScreen.family:
-        return FamilyScreen(family: familyMembers, onHome: () => _go(AppScreen.caregiverHome));
-      case AppScreen.message:
-        return MessageDetailScreen(
-          message: _selectedMessage ?? sampleMessages.first,
-          onBack: () => _go(AppScreen.caregiverHome),
-          onReply: () => _go(AppScreen.delivered),
+        return FamilyScreen(
+          family: _familyMembers,
+          onMemberAdded: _addFamilyMember,
+          onHome: () => _go(AppScreen.caregiverHome),
         );
       case AppScreen.elderHome:
         return ElderHomeScreen(
@@ -83,12 +80,6 @@ class _CheckInHomeState extends State<CheckInHome> {
         return RecorderScreen(
           isRecording: _isRecording,
           onToggleRecording: () => setState(() => _isRecording = !_isRecording),
-          onDone: () {
-            setState(() {
-              _isRecording = false;
-              _screen = AppScreen.delivered;
-            });
-          },
         );
       case AppScreen.delivered:
         return DeliveredScreen(onHome: () => _go(AppScreen.elderHome));
@@ -109,19 +100,13 @@ class _CheckInHomeState extends State<CheckInHome> {
     }
   }
 
-  void _openMessage(CheckInMessage message) {
-    setState(() {
-      _selectedMessage = message;
-      _screen = AppScreen.message;
-    });
-  }
-
   void _dismissMessage(CheckInMessage message) {
     setState(() {
       _caregiverMessages = _caregiverMessages.where((item) => item.id != message.id).toList();
-      if (_selectedMessage?.id == message.id) {
-        _selectedMessage = null;
-      }
     });
+  }
+
+  void _addFamilyMember(FamilyMember member) {
+    setState(() => _familyMembers = [..._familyMembers, member]);
   }
 }
