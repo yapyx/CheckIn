@@ -2,7 +2,7 @@ import json
 import os
 import sys
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 
 FUNCTIONS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -11,13 +11,16 @@ if FUNCTIONS_DIR not in sys.path:
 
 from backend.ai import OpenAITriageClient, TriageAnalysisError, parse_response_text
 from backend.api import ApiRouter, JsonResponse
-from backend.models import MessageStatus, Priority
+from backend.config import Settings
+from backend.models import MessageStatus, NotificationStatus, Priority, VoiceRequestPriority
 from backend.service import TriageService
 
 
 class FakeRepository:
     def __init__(self):
         self.messages = {}
+        self.voice_requests = {}
+        self.notifications = {}
         self.users = {
             "senior-1": {
                 "role": "senior",
@@ -71,6 +74,14 @@ class FakeRepository:
         }
         return message_id
 
+    def create_voice_request(self, fields):
+        request_id = f"request-{self.next_id}"
+        self.next_id += 1
+        document = dict(fields)
+        document["id"] = request_id
+        self.voice_requests[request_id] = document
+        return request_id
+
     def get_message(self, message_id):
         return self.messages.get(message_id)
 
@@ -78,7 +89,10 @@ class FakeRepository:
         self.messages[message_id].update(fields)
 
     def get_user(self, uid):
-        return self.users.get(uid)
+        user = self.users.get(uid)
+        if not user:
+            return None
+        return {"id": uid, **user}
 
     def find_senior_by_pairing_code(self, pairing_code):
         if pairing_code == "PAIR-123":
@@ -115,6 +129,46 @@ class FakeRepository:
             if user.get("role") == "caregiver":
                 tokens.extend(user.get("fcm_tokens", []))
         return tokens
+
+    def get_caregivers_for_senior(self, senior_id):
+        senior = self.users.get(senior_id)
+        if not senior:
+            return []
+        caregivers = []
+        for uid in senior.get("linked_accounts", []):
+            user = self.users.get(uid)
+            if user and user.get("role") == "caregiver":
+                caregivers.append({"id": uid, **user})
+        return caregivers
+
+    def create_notification(self, fields):
+        notification_id = f"notification-{self.next_id}"
+        self.next_id += 1
+        document = dict(fields)
+        document.setdefault("status", NotificationStatus.PENDING)
+        document.setdefault("send_count", 0)
+        document["id"] = notification_id
+        self.notifications[notification_id] = document
+        return document
+
+    def get_notification(self, notification_id):
+        return self.notifications.get(notification_id)
+
+    def update_notification(self, notification_id, fields):
+        self.notifications[notification_id].update(fields)
+        return self.notifications[notification_id]
+
+    def get_due_notifications(self, now):
+        due = []
+        for notification in self.notifications.values():
+            next_send_at = notification.get("next_send_at")
+            if (
+                notification.get("status") in (NotificationStatus.PENDING, NotificationStatus.SENT)
+                and next_send_at is not None
+                and next_send_at <= now
+            ):
+                due.append(notification)
+        return due
 
 
 class FakeStorage:
@@ -161,6 +215,12 @@ class FakeNotifier:
             raise RuntimeError("FCM unavailable")
         self.sent.append((tokens, message))
 
+    def send(self, payload):
+        if self.fail:
+            raise RuntimeError("Mock notification unavailable")
+        self.sent.append(payload)
+        return {"sent": True}
+
 
 class FakeRequest:
     def __init__(self, method, path, body=None, args=None):
@@ -177,7 +237,17 @@ class BackendServiceTests(unittest.TestCase):
     def build_service(self, ai=None):
         repo = FakeRepository()
         notifier = FakeNotifier()
-        service = TriageService(repo, FakeStorage(), ai or FakeAI(), notifier)
+        settings = Settings(
+            openai_api_key=None,
+            text_model="test",
+            transcription_model="test",
+            transcription_prompt="test",
+            request_timeout_seconds=1.0,
+            high_priority_repeat_interval_seconds=10,
+            high_priority_max_sends=5,
+            enable_mock_notifications=True,
+        )
+        service = TriageService(repo, FakeStorage(), ai or FakeAI(), notifier, settings)
         return service, repo, notifier
 
     def test_ingest_creates_processing_message(self):
@@ -300,6 +370,141 @@ class BackendServiceTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             service.login("caregiver-new", "wrong-password")
 
+    def test_standard_priority_creates_one_notification_and_sends_once(self):
+        service, repo, notifier = self.build_service()
+        now = datetime(2026, 5, 10, 8, 0, tzinfo=timezone.utc)
+
+        result = service.process_voice_request_result(
+            senior_id="senior-1",
+            transcript="Can someone call me later?",
+            intent="Routine message",
+            mood="calm",
+            priority=VoiceRequestPriority.STANDARD,
+            audio_url="gs://bucket/audio.webm",
+            now=now,
+        )
+
+        self.assertEqual(result["priority"], VoiceRequestPriority.STANDARD)
+        self.assertEqual(len(result["notifications_created"]), 1)
+        notification = next(iter(repo.notifications.values()))
+        self.assertEqual(notification["status"], NotificationStatus.SENT)
+        self.assertFalse(notification["repeat_until_acknowledged"])
+        self.assertIsNone(notification["next_send_at"])
+        self.assertEqual(notification["send_count"], 1)
+        self.assertEqual(len(notifier.sent), 1)
+        self.assertEqual(notifier.sent[0]["type"], "STANDARD_MESSAGE")
+
+    def test_high_priority_creates_repeating_notification(self):
+        service, repo, notifier = self.build_service()
+        now = datetime(2026, 5, 10, 8, 0, tzinfo=timezone.utc)
+
+        service.process_voice_request_result(
+            senior_id="senior-1",
+            transcript="I feel dizzy and missed my medicine.",
+            intent="Medication / urgent help",
+            mood="distressed",
+            priority=VoiceRequestPriority.HIGH,
+            now=now,
+        )
+
+        notification = next(iter(repo.notifications.values()))
+        self.assertEqual(notification["priority"], VoiceRequestPriority.HIGH)
+        self.assertTrue(notification["repeat_until_acknowledged"])
+        self.assertEqual(notification["status"], NotificationStatus.SENT)
+        self.assertEqual(notification["next_send_at"], now + timedelta(seconds=10))
+        self.assertEqual(len(notifier.sent), 1)
+        self.assertEqual(notifier.sent[0]["type"], "HIGH_PRIORITY_ALERT")
+
+    def test_high_priority_notification_resends_when_due(self):
+        service, repo, notifier = self.build_service()
+        now = datetime(2026, 5, 10, 8, 0, tzinfo=timezone.utc)
+        service.process_voice_request_result(
+            "senior-1",
+            "Help me now",
+            "Urgent help",
+            "distressed",
+            VoiceRequestPriority.HIGH,
+            now=now,
+        )
+        due_at = now + timedelta(seconds=10)
+
+        sent = service.send_due_notifications(due_at)
+
+        notification = next(iter(repo.notifications.values()))
+        self.assertEqual(len(sent), 1)
+        self.assertEqual(notification["send_count"], 2)
+        self.assertEqual(notification["next_send_at"], due_at + timedelta(seconds=10))
+        self.assertEqual(len(notifier.sent), 2)
+
+    def test_high_priority_stops_repeating_after_acknowledgement(self):
+        service, repo, notifier = self.build_service()
+        now = datetime(2026, 5, 10, 8, 0, tzinfo=timezone.utc)
+        service.process_voice_request_result(
+            "senior-1",
+            "Help me now",
+            "Urgent help",
+            "distressed",
+            VoiceRequestPriority.HIGH,
+            now=now,
+        )
+        notification_id = next(iter(repo.notifications))
+        service.acknowledge_notification(notification_id, now + timedelta(seconds=5))
+
+        sent = service.send_due_notifications(now + timedelta(seconds=10))
+
+        notification = repo.get_notification(notification_id)
+        self.assertEqual(sent, [])
+        self.assertEqual(notification["status"], NotificationStatus.ACKNOWLEDGED)
+        self.assertFalse(notification["repeat_until_acknowledged"])
+        self.assertIsNone(notification["next_send_at"])
+        self.assertEqual(len(notifier.sent), 1)
+
+    def test_acknowledgement_updates_status(self):
+        service, repo, _ = self.build_service()
+        now = datetime(2026, 5, 10, 8, 0, tzinfo=timezone.utc)
+        service.process_voice_request_result(
+            "senior-1",
+            "Help me now",
+            "Urgent help",
+            "distressed",
+            VoiceRequestPriority.HIGH,
+            now=now,
+        )
+        notification_id = next(iter(repo.notifications))
+
+        result = service.acknowledge_notification(notification_id, now + timedelta(seconds=3))
+
+        self.assertEqual(result["status"], NotificationStatus.ACKNOWLEDGED)
+        self.assertIsNotNone(result["acknowledged_at"])
+
+    def test_invalid_priority_is_rejected(self):
+        service, _, _ = self.build_service()
+
+        with self.assertRaises(ValueError):
+            service.process_voice_request_result(
+                "senior-1",
+                "hello",
+                "Routine",
+                "calm",
+                "LOW",
+            )
+
+    def test_missing_caregiver_relationship_creates_no_notifications(self):
+        service, repo, notifier = self.build_service()
+        repo.users["senior-alone"] = {"role": "senior", "linked_accounts": [], "fcm_tokens": []}
+
+        result = service.process_voice_request_result(
+            "senior-alone",
+            "hello",
+            "Routine",
+            "calm",
+            VoiceRequestPriority.STANDARD,
+        )
+
+        self.assertEqual(result["notifications_created"], [])
+        self.assertEqual(repo.notifications, {})
+        self.assertEqual(notifier.sent, [])
+
 
 class ApiRouterTests(unittest.TestCase):
     def test_ingest_route_returns_accepted(self):
@@ -332,6 +537,60 @@ class ApiRouterTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.body["user"]["id"], "caregiver-new")
+
+    def test_process_result_route_creates_notification(self):
+        service, _, _ = BackendServiceTests().build_service()
+        router = ApiRouter(service)
+
+        response = router.handle(
+            FakeRequest(
+                "POST",
+                "/voice-requests/process-result",
+                {
+                    "senior_id": "senior-1",
+                    "transcript": "I feel dizzy and I missed my medicine. Please help.",
+                    "intent": "Medication / urgent help",
+                    "mood": "distressed",
+                    "priority": "HIGH",
+                    "audio_url": "gs://bucket/audio.webm",
+                },
+            )
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.body["priority"], VoiceRequestPriority.HIGH)
+        self.assertEqual(len(response.body["notifications_created"]), 1)
+
+    def test_acknowledge_route_updates_notification(self):
+        service, repo, _ = BackendServiceTests().build_service()
+        router = ApiRouter(service)
+        service.process_voice_request_result("senior-1", "help", "urgent", "distressed", "HIGH")
+        notification_id = next(iter(repo.notifications))
+
+        response = router.handle(FakeRequest("POST", f"/notifications/{notification_id}/acknowledge"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.body["status"], NotificationStatus.ACKNOWLEDGED)
+
+    def test_process_result_route_rejects_invalid_priority(self):
+        service, _, _ = BackendServiceTests().build_service()
+        router = ApiRouter(service)
+
+        response = router.handle(
+            FakeRequest(
+                "POST",
+                "/voice-requests/process-result",
+                {
+                    "senior_id": "senior-1",
+                    "transcript": "hello",
+                    "intent": "Routine",
+                    "mood": "calm",
+                    "priority": "LOW",
+                },
+            )
+        )
+
+        self.assertEqual(response.status_code, 400)
 
 
 class OpenAITriageClientTests(unittest.TestCase):

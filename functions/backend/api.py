@@ -80,6 +80,26 @@ class ApiRouter:
         if method == "POST" and path == "/api/v1/triage/analyze":
             return JsonResponse(self.service.analyze(require_string(body, "message_id")))
 
+        if method == "POST" and path in ("/voice-requests/process-result", "/api/v1/voice-requests/process-result"):
+            return JsonResponse(
+                self.service.process_voice_request_result(
+                    senior_id=require_string(body, "senior_id"),
+                    transcript=require_string(body, "transcript"),
+                    intent=require_string(body, "intent"),
+                    mood=require_string(body, "mood"),
+                    priority=require_string(body, "priority"),
+                    audio_url=str(body.get("audio_url") or body.get("audio_path") or ""),
+                ),
+                201,
+            )
+
+        ack_match = re.fullmatch(r"(?:/api/v1)?/notifications/([^/]+)/acknowledge", path)
+        if method == "POST" and ack_match:
+            return JsonResponse(self.service.acknowledge_notification(ack_match.group(1)))
+
+        if method == "POST" and path in ("/notifications/send-due", "/api/v1/notifications/send-due"):
+            return JsonResponse(self.service.send_due_notifications())
+
         if method == "GET" and path == "/api/v1/messages/feed":
             args = getattr(request, "args", {}) or {}
             limit = int(args.get("limit", 20))

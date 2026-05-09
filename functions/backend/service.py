@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from .ai import TriageAnalysisError
 from .auth import hash_password, verify_password
-from .models import MessageStatus, Priority, UserRole, public_message, public_user
+from .config import Settings
+from .models import MessageStatus, NotificationStatus, Priority, UserRole, VoiceRequestPriority, public_message, public_user
+from .notifications import notification_payload
 
 
 EMERGENCY_FALLBACK = {
@@ -17,11 +19,12 @@ EMERGENCY_FALLBACK = {
 
 
 class TriageService:
-    def __init__(self, repository: Any, storage: Any, ai_client: Any, notifier: Any):
+    def __init__(self, repository: Any, storage: Any, ai_client: Any, notifier: Any, settings: Settings | None = None):
         self.repository = repository
         self.storage = storage
         self.ai_client = ai_client
         self.notifier = notifier
+        self.settings = settings or Settings.from_env()
 
     def ingest(self, senior_id: str, storage_path: str, uploaded_at: datetime | None = None) -> dict[str, str]:
         senior = self.repository.get_user(senior_id)
@@ -162,12 +165,191 @@ class TriageService:
         self._notify(updated)
         return public_message(updated)
 
+    def process_voice_request_result(
+        self,
+        senior_id: str,
+        transcript: str,
+        intent: str,
+        mood: str,
+        priority: str,
+        audio_url: str = "",
+        now: datetime | None = None,
+    ) -> dict[str, Any]:
+        normalized_priority = VoiceRequestPriority.normalize(priority)
+        senior = self.repository.get_user(senior_id)
+        if not senior:
+            raise ValueError("senior_id does not exist")
+        if senior.get("role") != UserRole.SENIOR:
+            raise ValueError("senior_id must belong to a senior user")
+
+        created_at = now or _utcnow()
+        request_id = self.repository.create_voice_request(
+            {
+                "senior_id": senior_id,
+                "transcript": transcript,
+                "audio_url": audio_url,
+                "intent": intent,
+                "mood": mood,
+                "priority": normalized_priority,
+                "created_at": created_at,
+            }
+        )
+
+        caregivers = self.repository.get_caregivers_for_senior(senior_id)
+        if not caregivers:
+            return {"request_id": request_id, "notifications_created": [], "priority": normalized_priority}
+
+        notifications = []
+        for caregiver in caregivers:
+            notification = self._create_notification_for_caregiver(
+                request_id,
+                senior_id,
+                caregiver["id"],
+                transcript,
+                intent,
+                mood,
+                normalized_priority,
+                audio_url,
+                created_at,
+            )
+            sent = self._send_notification(notification, senior, created_at)
+            notifications.append(sent)
+
+        return {
+            "request_id": request_id,
+            "notifications_created": [self._public_notification(notification) for notification in notifications],
+            "priority": normalized_priority,
+        }
+
+    def acknowledge_notification(self, notification_id: str, now: datetime | None = None) -> dict[str, Any]:
+        self._get_notification_or_raise(notification_id)
+        updated = self.repository.update_notification(
+            notification_id,
+            {
+                "status": NotificationStatus.ACKNOWLEDGED,
+                "acknowledged_at": now or _utcnow(),
+                "repeat_until_acknowledged": False,
+                "next_send_at": None,
+            },
+        )
+        return self._public_notification(updated)
+
+    def send_due_notifications(self, now: datetime | None = None, limit: int = 100) -> list[dict[str, Any]]:
+        current_time = now or _utcnow()
+        due_notifications = self.repository.get_due_notifications(current_time)[: max(1, min(int(limit), 500))]
+        sent: list[dict[str, Any]] = []
+        for notification in due_notifications:
+            if notification.get("status") == NotificationStatus.ACKNOWLEDGED:
+                continue
+            if notification.get("priority") != VoiceRequestPriority.HIGH:
+                continue
+            if int(notification.get("send_count", 0)) >= self.settings.high_priority_max_sends:
+                updated = self.repository.update_notification(
+                    notification["id"],
+                    {"status": NotificationStatus.FAILED, "next_send_at": None},
+                )
+                sent.append(self._public_notification(updated))
+                continue
+            senior = self.repository.get_user(notification["senior_id"]) or {}
+            sent.append(self._public_notification(self._send_notification(notification, senior, current_time)))
+        return sent
+
     def _notify(self, message: dict[str, Any]) -> None:
         tokens = self.repository.get_caregiver_tokens_for_senior(message["senior_id"])
         try:
             self.notifier.notify_caregivers(tokens, message)
         except Exception as exc:
             self.repository.update_message(message["id"], {"notification_error": str(exc)})
+
+    def _create_notification_for_caregiver(
+        self,
+        request_id: str,
+        senior_id: str,
+        caregiver_id: str,
+        transcript: str,
+        intent: str,
+        mood: str,
+        priority: str,
+        audio_url: str,
+        now: datetime,
+    ) -> dict[str, Any]:
+        repeat = priority == VoiceRequestPriority.HIGH
+        return self.repository.create_notification(
+            {
+                "request_id": request_id,
+                "senior_id": senior_id,
+                "caregiver_id": caregiver_id,
+                "transcript": transcript,
+                "audio_url": audio_url,
+                "intent": intent,
+                "mood": mood,
+                "priority": priority,
+                "status": NotificationStatus.PENDING,
+                "created_at": now,
+                "acknowledged_at": None,
+                "repeat_until_acknowledged": repeat,
+                "next_send_at": now,
+                "last_sent_at": None,
+                "send_count": 0,
+            }
+        )
+
+    def _send_notification(
+        self,
+        notification: dict[str, Any],
+        senior: dict[str, Any] | None = None,
+        now: datetime | None = None,
+    ) -> dict[str, Any]:
+        send_time = now or _utcnow()
+        payload = notification_payload(notification, senior)
+        try:
+            self._dispatch_notification(payload, notification)
+            send_count = int(notification.get("send_count", 0)) + 1
+            repeat = bool(notification.get("repeat_until_acknowledged")) and notification.get("priority") == VoiceRequestPriority.HIGH
+            next_send_at = None
+            if repeat and send_count < self.settings.high_priority_max_sends:
+                next_send_at = send_time + timedelta(seconds=self.settings.high_priority_repeat_interval_seconds)
+            updated = self.repository.update_notification(
+                notification["id"],
+                {
+                    "status": NotificationStatus.SENT,
+                    "last_sent_at": send_time,
+                    "next_send_at": next_send_at,
+                    "send_count": send_count,
+                    "last_payload": payload,
+                },
+            )
+            return updated
+        except Exception as exc:
+            return self.repository.update_notification(
+                notification["id"],
+                {
+                    "status": NotificationStatus.FAILED,
+                    "notification_error": str(exc),
+                },
+            )
+
+    def _dispatch_notification(self, payload: dict[str, Any], notification: dict[str, Any]) -> None:
+        if not self.settings.enable_mock_notifications:
+            # TODO: Real push notification delivery should happen here, e.g. FCM/SMS/email.
+            pass
+        if hasattr(self.notifier, "send"):
+            self.notifier.send(payload)
+            return
+        if hasattr(self.notifier, "notify_caregivers"):
+            tokens = []
+            caregiver = self.repository.get_user(notification["caregiver_id"]) or {}
+            tokens.extend(caregiver.get("fcm_tokens", []))
+            self.notifier.notify_caregivers(tokens, {"id": notification["id"], **payload})
+
+    def _get_notification_or_raise(self, notification_id: str) -> dict[str, Any]:
+        notification = self.repository.get_notification(notification_id)
+        if not notification:
+            raise ValueError("notification_id does not exist")
+        return notification
+
+    def _public_notification(self, notification: dict[str, Any]) -> dict[str, Any]:
+        return {key: _public_value(value) for key, value in notification.items()}
 
     def _get_message_or_raise(self, message_id: str) -> dict[str, Any]:
         message = self.repository.get_message(message_id)
@@ -185,3 +367,13 @@ def _timestamp_sort(value: Any) -> float:
         except ValueError:
             return 0
     return 0
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _public_value(value: Any) -> Any:
+    if isinstance(value, datetime):
+        return value.isoformat()
+    return value

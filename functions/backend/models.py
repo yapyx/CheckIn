@@ -22,6 +22,31 @@ class Priority:
     }
 
 
+class VoiceRequestPriority:
+    HIGH = "HIGH"
+    STANDARD = "STANDARD"
+
+    ALL = (HIGH, STANDARD)
+
+    @classmethod
+    def normalize(cls, value: Any) -> str:
+        if not isinstance(value, str):
+            raise ValueError("priority must be HIGH or STANDARD")
+        normalized = value.strip().upper()
+        if normalized not in cls.ALL:
+            raise ValueError("priority must be HIGH or STANDARD")
+        return normalized
+
+
+class NotificationStatus:
+    PENDING = "PENDING"
+    SENT = "SENT"
+    ACKNOWLEDGED = "ACKNOWLEDGED"
+    FAILED = "FAILED"
+
+    ALL = (PENDING, SENT, ACKNOWLEDGED, FAILED)
+
+
 class MessageStatus:
     PROCESSING = "processing"
     UNREAD = "unread"

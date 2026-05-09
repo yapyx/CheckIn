@@ -128,6 +128,43 @@ Request:
 
 Response `200`: the analyzed message, including `summary`, `priority`, `reasoning`, and `suggested_action`.
 
+### `POST /voice-requests/process-result`
+
+Accepts an already processed voice request result and creates caregiver notification records. The same route is also available at `/api/v1/voice-requests/process-result`.
+
+Request:
+
+```json
+{
+  "senior_id": "senior-1",
+  "transcript": "I feel dizzy and I missed my medicine. Please help.",
+  "intent": "Medication / urgent help",
+  "mood": "distressed",
+  "priority": "HIGH",
+  "audio_url": "gs://bucket/audio.webm"
+}
+```
+
+`priority` must be `HIGH` or `STANDARD`. High-priority notifications repeat until acknowledged; standard notifications send once.
+
+Response `201`:
+
+```json
+{
+  "request_id": "auto-generated-id",
+  "notifications_created": [],
+  "priority": "HIGH"
+}
+```
+
+### `POST /notifications/{notification_id}/acknowledge`
+
+Marks a notification as acknowledged, sets `acknowledged_at`, and stops repeat sends. The same route is also available at `/api/v1/notifications/{notification_id}/acknowledge`.
+
+### `POST /notifications/send-due`
+
+Development/manual scheduler endpoint for sending due repeat notifications. In production this should be triggered by a scheduled function or queue worker.
+
 ### `GET /api/v1/messages/feed`
 
 Returns caregiver-visible messages for linked senior accounts. Results are sorted by `priority` first, with `Emergency` before `Not Emergency`, then by newest `created_at`.
@@ -233,6 +270,9 @@ The backend keeps model IDs configurable by environment:
 
 - `OPENAI_TEXT_MODEL`, default `gpt-5.5`
 - `OPENAI_TRANSCRIPTION_MODEL`, default `whisper-1`
+- `HIGH_PRIORITY_REPEAT_INTERVAL_SECONDS`, default `10` for demos. Production should use `120`.
+- `HIGH_PRIORITY_MAX_SENDS`, default `30`.
+- `ENABLE_MOCK_NOTIFICATIONS`, default `true`. Set to `false` when real push delivery is configured.
 
 The project spec mentions `gpt-5.5-instant` and `whisper-large-v3-turbo`, but the official OpenAI docs found during implementation list `gpt-5.5` for GPT-5.5 and `whisper-1` for Whisper transcription. Set the environment variables above if your hackathon account has different aliases enabled.
 

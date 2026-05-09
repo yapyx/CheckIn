@@ -6,7 +6,8 @@ from typing import Any
 
 from backend.ai import OpenAITriageClient
 from backend.api import ApiRouter
-from backend.notifications import FirebaseNotifier
+from backend.config import Settings
+from backend.notifications import FirebaseNotifier, MockNotificationSender
 from backend.repository import FirestoreRepository
 from backend.service import TriageService
 from backend.storage import FirebaseStorageGateway
@@ -32,11 +33,14 @@ def _initialize_firebase() -> None:
 
 def build_service() -> TriageService:
     _initialize_firebase()
+    settings = Settings.from_env()
+    notifier = MockNotificationSender() if settings.enable_mock_notifications else FirebaseNotifier()
     return TriageService(
         FirestoreRepository(),
         FirebaseStorageGateway(),
         OpenAITriageClient(),
-        FirebaseNotifier(),
+        notifier,
+        settings,
     )
 
 

@@ -5,7 +5,7 @@ import string
 from datetime import datetime, timezone
 from typing import Any
 
-from .models import MessageStatus, UserRole
+from .models import MessageStatus, NotificationStatus, UserRole
 
 
 class FirestoreRepository:
@@ -142,6 +142,70 @@ class FirestoreRepository:
             if user and user.get("role") == UserRole.CAREGIVER:
                 tokens.extend(user.get("fcm_tokens", []))
         return tokens
+
+    def get_caregivers_for_senior(self, senior_id: str) -> list[dict[str, Any]]:
+        senior = self.get_user(senior_id)
+        if not senior:
+            return []
+
+        caregivers: list[dict[str, Any]] = []
+        for linked_uid in senior.get("linked_accounts", []):
+            user = self.get_user(linked_uid)
+            if user and user.get("role") == UserRole.CAREGIVER:
+                caregivers.append(user)
+        return caregivers
+
+    def create_voice_request(self, fields: dict[str, Any]) -> str:
+        now = fields.get("created_at") or self._server_timestamp()
+        document = dict(fields)
+        document.setdefault("created_at", now)
+        document.setdefault("updated_at", now)
+        doc_ref = self.client.collection("voice_requests").document()
+        doc_ref.set(document)
+        return doc_ref.id
+
+    def create_notification(self, fields: dict[str, Any]) -> dict[str, Any]:
+        now = fields.get("created_at") or self._server_timestamp()
+        document = dict(fields)
+        document.setdefault("status", NotificationStatus.PENDING)
+        document.setdefault("created_at", now)
+        document.setdefault("updated_at", now)
+        document.setdefault("send_count", 0)
+        doc_ref = self.client.collection("notifications").document()
+        doc_ref.set(document)
+        document["id"] = doc_ref.id
+        return document
+
+    def get_notification(self, notification_id: str) -> dict[str, Any] | None:
+        snapshot = self.client.collection("notifications").document(notification_id).get()
+        if not snapshot.exists:
+            return None
+        notification = snapshot.to_dict()
+        notification["id"] = snapshot.id
+        return notification
+
+    def update_notification(self, notification_id: str, fields: dict[str, Any]) -> dict[str, Any]:
+        update = dict(fields)
+        update["updated_at"] = self._server_timestamp()
+        self.client.collection("notifications").document(notification_id).update(update)
+        notification = self.get_notification(notification_id)
+        if not notification:
+            raise ValueError("notification_id does not exist")
+        return notification
+
+    def get_due_notifications(self, now: datetime) -> list[dict[str, Any]]:
+        query = (
+            self.client.collection("notifications")
+            .where("status", "in", [NotificationStatus.PENDING, NotificationStatus.SENT])
+            .where("next_send_at", "<=", now)
+        )
+        notifications: list[dict[str, Any]] = []
+        for snapshot in query.stream():
+            notification = snapshot.to_dict()
+            notification["id"] = snapshot.id
+            if notification.get("status") != NotificationStatus.ACKNOWLEDGED:
+                notifications.append(notification)
+        return notifications
 
     def _server_timestamp(self) -> Any:
         try:
