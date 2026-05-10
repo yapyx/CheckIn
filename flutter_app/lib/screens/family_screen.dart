@@ -120,8 +120,7 @@ class _FamilyMemberCard extends StatelessWidget {
         children: [
           const CircleAvatar(
             radius: 28,
-            backgroundColor: Color(0xFFDCEBFF),
-            child: Icon(Icons.face_rounded, color: Color(0xFF061D3B), size: 30),
+            backgroundImage: AssetImage('assets/senior pfp.png'),
           ),
           const SizedBox(width: 18),
           Expanded(

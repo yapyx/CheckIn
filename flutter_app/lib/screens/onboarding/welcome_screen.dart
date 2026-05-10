@@ -4,7 +4,6 @@ import '../../models/role.dart';
 import '../../models/signup_form_data.dart';
 import '../../widgets/brand_header.dart';
 import '../../widgets/screen_frame.dart';
-import '../../widgets/trust_footer.dart';
 
 enum _AuthTab { signUp, signIn }
 
@@ -44,31 +43,32 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   Widget build(BuildContext context) {
     return ScreenFrame(
       backgroundColor: const Color(0xFFF5F6F8),
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 48, 20, 40),
-        children: [
-          const BrandHeader(),
-          const SizedBox(height: 36),
-          const _HeroCard(),
-          const SizedBox(height: 38),
-          _WelcomeTabs(
-            selectedTab: _selectedTab,
-            onChanged: (tab) {
-              setState(() {
-                _selectedTab = tab;
-                _showRoleValidation = false;
-                _showLoginValidation = false;
-              });
-            },
-          ),
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 220),
-            child: _selectedTab == _AuthTab.signUp
-                ? _buildSignUpContent()
-                : _buildSignInContent(),
-          ),
-          const TrustFooter(),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+        child: Column(
+          children: [
+            const BrandHeader(),
+            const SizedBox(height: 12),
+            const _HeroCard(),
+            const SizedBox(height: 14),
+            _WelcomeTabs(
+              selectedTab: _selectedTab,
+              onChanged: (tab) {
+                setState(() {
+                  _selectedTab = tab;
+                  _showRoleValidation = false;
+                  _showLoginValidation = false;
+                });
+              },
+            ),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 220),
+              child: _selectedTab == _AuthTab.signUp
+                  ? _buildSignUpContent()
+                  : _buildSignInContent(),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -78,14 +78,14 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       key: const ValueKey('sign-up'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 40),
+        const SizedBox(height: 16),
         const Text('Tell us who you are',
             style: TextStyle(
-                fontSize: 25,
+                fontSize: 22,
                 fontWeight: FontWeight.w600,
                 color: Color(0xFF1A1A1A),
                 height: 1.25)),
-        const SizedBox(height: 24),
+        const SizedBox(height: 14),
         _RoleCard(
           role: Role.senior,
           selectedRole: _selectedRole,
@@ -97,7 +97,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             _showRoleValidation = false;
           }),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 10),
         _RoleCard(
           role: Role.caregiver,
           selectedRole: _selectedRole,
@@ -110,12 +110,12 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
           }),
         ),
         if (_showRoleValidation) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           const Text('Please choose Senior or Caregiver to continue.',
               style: TextStyle(
-                  color: Color(0xFFB42318), fontSize: 15, height: 1.3)),
+                  color: Color(0xFFB42318), fontSize: 13, height: 1.3)),
         ],
-        const SizedBox(height: 32),
+        const SizedBox(height: 18),
         _PrimaryWelcomeButton(
           label: 'Create New Account',
           onPressed: () {
@@ -136,29 +136,29 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       key: const ValueKey('sign-in'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 38),
+        const SizedBox(height: 14),
         const Text('Welcome Back',
             style: TextStyle(
-                fontSize: 27,
+                fontSize: 23,
                 fontWeight: FontWeight.w700,
                 color: Color(0xFF1A1A1A),
                 height: 1.2)),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
         const Text('Sign in to continue your care journey.',
             style: TextStyle(
-                fontSize: 17, color: Color(0xFF6B7280), height: 1.35)),
-        const SizedBox(height: 24),
+                fontSize: 14, color: Color(0xFF6B7280), height: 1.25)),
+        const SizedBox(height: 12),
         const Text('Sign in as',
             style: TextStyle(
-                fontSize: 16,
+                fontSize: 14,
                 color: Color(0xFF0B1F33),
                 fontWeight: FontWeight.w700)),
-        const SizedBox(height: 10),
+        const SizedBox(height: 6),
         _SignInRoleSelector(
           selectedRole: _signInRole,
           onChanged: (role) => setState(() => _signInRole = role),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 10),
         _AuthTextField(
           controller: _loginUserIdController,
           label: 'User ID',
@@ -211,7 +211,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             ));
           },
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 6),
         Center(
           child: TextButton(
             onPressed: () => setState(() {
@@ -238,7 +238,7 @@ class _SignInRoleSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 48,
+      height: 42,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
           color: const Color(0xFFE5E7EB),
@@ -313,7 +313,7 @@ class _WelcomeTabs extends StatelessWidget {
   Widget build(BuildContext context) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 180),
-      height: 50,
+      height: 44,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: const Color(0xFFE5E7EB),
@@ -386,7 +386,7 @@ class _HeroCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 350,
+      height: 132,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
@@ -397,11 +397,13 @@ class _HeroCard extends StatelessWidget {
         ],
       ),
       clipBehavior: Clip.antiAlias,
-      child: const Padding(
-        padding: EdgeInsets.fromLTRB(8, 28, 8, 22),
-        child: CustomPaint(
-          painter: _CareIllustrationPainter(),
-          child: SizedBox.expand(),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(8, 10, 8, 8),
+        child: Image.asset(
+          'assets/home page.png',
+          fit: BoxFit.contain,
+          width: double.infinity,
+          height: double.infinity,
         ),
       ),
     );
@@ -438,8 +440,8 @@ class _RoleCard extends StatelessWidget {
         onTap: () => onTap(role),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
-          constraints: const BoxConstraints(minHeight: 109),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 22),
+          constraints: const BoxConstraints(minHeight: 78),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             color: selected ? const Color(0xFFEAF3FF) : Colors.white,
             borderRadius: BorderRadius.circular(20),
@@ -458,10 +460,10 @@ class _RoleCard extends StatelessWidget {
           child: Row(
             children: [
               CircleAvatar(
-                  radius: 28,
+                  radius: 22,
                   backgroundColor: const Color(0xFFEAF3FF),
-                  child: Icon(icon, color: const Color(0xFF0B63C9), size: 28)),
-              const SizedBox(width: 23),
+                  child: Icon(icon, color: const Color(0xFF0B63C9), size: 23)),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -469,14 +471,14 @@ class _RoleCard extends StatelessWidget {
                   children: [
                     Text(title,
                         style: const TextStyle(
-                            fontSize: 20,
+                            fontSize: 17,
                             fontWeight: FontWeight.w400,
                             color: Color(0xFF1A1A1A),
                             height: 1.22)),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 3),
                     Text(subtitle,
                         style: const TextStyle(
-                            fontSize: 17,
+                            fontSize: 14,
                             color: Color(0xFF4B5563),
                             fontWeight: FontWeight.w400,
                             height: 1.28)),
@@ -520,10 +522,11 @@ class _PrimaryWelcomeButton extends StatelessWidget {
           foregroundColor: Colors.white,
           elevation: 0,
           minimumSize: const Size.fromHeight(60),
+          fixedSize: const Size.fromHeight(52),
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
           textStyle: const TextStyle(
-              fontSize: 23, fontWeight: FontWeight.w600, height: 1.15),
+              fontSize: 18, fontWeight: FontWeight.w600, height: 1.15),
         ),
         child: Text(label),
       ),
@@ -549,7 +552,7 @@ class _AuthTextField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: 10),
       child: TextField(
         controller: controller,
         obscureText: obscureText,
@@ -560,7 +563,7 @@ class _AuthTextField extends StatelessWidget {
           filled: true,
           fillColor: Colors.white,
           contentPadding:
-              const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(18),
             borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
@@ -574,217 +577,4 @@ class _AuthTextField extends StatelessWidget {
       ),
     );
   }
-}
-
-class _CareIllustrationPainter extends CustomPainter {
-  const _CareIllustrationPainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..isAntiAlias = true;
-    final stroke = Paint()
-      ..isAntiAlias = true
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.1
-      ..color = const Color(0xFF1F2937);
-
-    final w = size.width;
-    final h = size.height;
-    final groundY = h * .77;
-
-    final blob = Path()
-      ..moveTo(w * .13, h * .56)
-      ..cubicTo(w * .18, h * .22, w * .40, h * .27, w * .47, h * .29)
-      ..cubicTo(w * .64, h * .32, w * .78, h * .18, w * .91, h * .30)
-      ..cubicTo(w * 1.02, h * .40, w * .95, h * .69, w * .91, h * .76)
-      ..lineTo(w * .08, h * .76)
-      ..cubicTo(-w * .02, h * .71, w * .04, h * .63, w * .13, h * .56)
-      ..close();
-    paint.color = const Color(0xFF9CCDF3);
-    canvas.drawPath(blob, paint);
-
-    _drawPlant(canvas, size, stroke);
-    _drawSofa(canvas, size, stroke);
-    _drawCaregiver(canvas, size, stroke);
-    _drawElder(canvas, size, stroke);
-
-    paint
-      ..style = PaintingStyle.fill
-      ..color = const Color(0xFFE5E7EB);
-    canvas.drawRect(Rect.fromLTWH(w * .08, groundY, w * .84, 1.2), paint);
-  }
-
-  void _drawSofa(Canvas canvas, Size size, Paint stroke) {
-    final w = size.width;
-    final h = size.height;
-    final paint = Paint()..isAntiAlias = true;
-    final sofa = RRect.fromRectAndRadius(
-        Rect.fromLTWH(w * .18, h * .54, w * .70, h * .25),
-        const Radius.circular(18));
-    paint.color = const Color(0xFFAA9B90);
-    canvas.drawRRect(sofa, paint);
-    canvas.drawRRect(sofa, stroke);
-
-    paint.color = const Color(0xFFC0B2A6);
-    final leftCushion = RRect.fromRectAndRadius(
-        Rect.fromLTWH(w * .22, h * .58, w * .25, h * .18),
-        const Radius.circular(12));
-    final rightCushion = RRect.fromRectAndRadius(
-        Rect.fromLTWH(w * .52, h * .58, w * .27, h * .18),
-        const Radius.circular(12));
-    canvas.drawRRect(leftCushion, paint);
-    canvas.drawRRect(rightCushion, paint);
-    canvas.drawRRect(leftCushion, stroke);
-    canvas.drawRRect(rightCushion, stroke);
-
-    paint.color = const Color(0xFF8F8179);
-    final leftArm = RRect.fromRectAndRadius(
-        Rect.fromLTWH(w * .14, h * .61, w * .13, h * .18),
-        const Radius.circular(12));
-    final rightArm = RRect.fromRectAndRadius(
-        Rect.fromLTWH(w * .78, h * .59, w * .13, h * .20),
-        const Radius.circular(12));
-    canvas.drawRRect(leftArm, paint);
-    canvas.drawRRect(rightArm, paint);
-    canvas.drawRRect(leftArm, stroke);
-    canvas.drawRRect(rightArm, stroke);
-  }
-
-  void _drawPlant(Canvas canvas, Size size, Paint stroke) {
-    final w = size.width;
-    final h = size.height;
-    final paint = Paint()..isAntiAlias = true;
-    final stem = Paint()
-      ..isAntiAlias = true
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke
-      ..color = const Color(0xFF2F6B4F);
-
-    final baseX = w * .13;
-    final baseY = h * .70;
-    canvas.drawLine(Offset(baseX, baseY), Offset(baseX, h * .38), stem);
-    for (final leaf in [
-      Rect.fromLTWH(w * .08, h * .47, w * .08, h * .04),
-      Rect.fromLTWH(w * .12, h * .42, w * .08, h * .04),
-      Rect.fromLTWH(w * .06, h * .56, w * .09, h * .04),
-      Rect.fromLTWH(w * .14, h * .53, w * .09, h * .04),
-      Rect.fromLTWH(w * .09, h * .36, w * .08, h * .04),
-    ]) {
-      paint.color = const Color(0xFF5EA47D);
-      canvas.drawOval(leaf, paint);
-      canvas.drawOval(leaf, stroke);
-    }
-
-    paint.color = const Color(0xFFD7DBE2);
-    final pot = Path()
-      ..moveTo(w * .08, h * .69)
-      ..lineTo(w * .18, h * .69)
-      ..lineTo(w * .16, h * .77)
-      ..lineTo(w * .10, h * .77)
-      ..close();
-    canvas.drawPath(pot, paint);
-    canvas.drawPath(pot, stroke);
-  }
-
-  void _drawCaregiver(Canvas canvas, Size size, Paint stroke) {
-    final w = size.width;
-    final h = size.height;
-    final paint = Paint()..isAntiAlias = true;
-
-    paint.color = const Color(0xFF4A2B28);
-    canvas.drawOval(Rect.fromLTWH(w * .36, h * .33, w * .12, h * .15), paint);
-    canvas.drawOval(Rect.fromLTWH(w * .31, h * .38, w * .14, h * .16), paint);
-
-    paint.color = const Color(0xFFE9B28F);
-    canvas.drawOval(Rect.fromLTWH(w * .34, h * .36, w * .12, h * .13), paint);
-    canvas.drawOval(Rect.fromLTWH(w * .34, h * .36, w * .12, h * .13), stroke);
-
-    paint.color = const Color(0xFF2E3B4E);
-    final jacket = Path()
-      ..moveTo(w * .26, h * .55)
-      ..lineTo(w * .33, h * .46)
-      ..lineTo(w * .48, h * .48)
-      ..lineTo(w * .55, h * .76)
-      ..lineTo(w * .28, h * .76)
-      ..close();
-    canvas.drawPath(jacket, paint);
-    canvas.drawPath(jacket, stroke);
-
-    paint.color = const Color(0xFF6FA8CF);
-    final shirt = Path()
-      ..moveTo(w * .36, h * .48)
-      ..lineTo(w * .45, h * .48)
-      ..lineTo(w * .47, h * .76)
-      ..lineTo(w * .36, h * .76)
-      ..close();
-    canvas.drawPath(shirt, paint);
-    canvas.drawPath(shirt, stroke);
-
-    paint.color = const Color(0xFFE9B28F);
-    canvas.drawCircle(Offset(w * .44, h * .58), w * .018, paint);
-    canvas.drawCircle(Offset(w * .44, h * .58), w * .018, stroke);
-    canvas.drawLine(Offset(w * .49, h * .52), Offset(w * .55, h * .47), stroke);
-    canvas.drawLine(Offset(w * .34, h * .51), Offset(w * .29, h * .64), stroke);
-    _drawFace(canvas, Offset(w * .395, h * .415), w * .017, stroke);
-  }
-
-  void _drawElder(Canvas canvas, Size size, Paint stroke) {
-    final w = size.width;
-    final h = size.height;
-    final paint = Paint()..isAntiAlias = true;
-
-    paint.color = const Color(0xFFE5E7EB);
-    canvas.drawOval(Rect.fromLTWH(w * .55, h * .32, w * .13, h * .13), paint);
-    canvas.drawOval(Rect.fromLTWH(w * .55, h * .32, w * .13, h * .13), stroke);
-
-    paint.color = const Color(0xFFF1C8AA);
-    canvas.drawOval(Rect.fromLTWH(w * .56, h * .36, w * .12, h * .13), paint);
-    canvas.drawOval(Rect.fromLTWH(w * .56, h * .36, w * .12, h * .13), stroke);
-
-    paint.color = const Color(0xFF768B82);
-    final sweater = Path()
-      ..moveTo(w * .51, h * .52)
-      ..lineTo(w * .57, h * .47)
-      ..lineTo(w * .70, h * .47)
-      ..lineTo(w * .78, h * .76)
-      ..lineTo(w * .54, h * .76)
-      ..close();
-    canvas.drawPath(sweater, paint);
-    canvas.drawPath(sweater, stroke);
-
-    paint.color = const Color(0xFFF1C8AA);
-    canvas.drawCircle(Offset(w * .58, h * .60), w * .021, paint);
-    canvas.drawCircle(Offset(w * .66, h * .59), w * .021, paint);
-    canvas.drawLine(Offset(w * .57, h * .55), Offset(w * .60, h * .62), stroke);
-    canvas.drawLine(Offset(w * .68, h * .55), Offset(w * .64, h * .62), stroke);
-
-    paint.color = const Color(0xFFE5E7EB);
-    final phone = RRect.fromRectAndRadius(
-        Rect.fromLTWH(w * .60, h * .56, w * .08, h * .11),
-        const Radius.circular(5));
-    canvas.drawRRect(phone, paint);
-    canvas.drawRRect(phone, stroke);
-    _drawFace(canvas, Offset(w * .615, h * .418), w * .016, stroke);
-    canvas.drawCircle(Offset(w * .58, h * .41), w * .012, stroke);
-    canvas.drawCircle(Offset(w * .64, h * .41), w * .012, stroke);
-    canvas.drawLine(
-        Offset(w * .592, h * .41), Offset(w * .628, h * .41), stroke);
-  }
-
-  void _drawFace(Canvas canvas, Offset center, double unit, Paint stroke) {
-    canvas.drawCircle(center.translate(-unit, -unit * .25), unit * .18, stroke);
-    canvas.drawCircle(center.translate(unit, -unit * .25), unit * .18, stroke);
-    canvas.drawArc(
-        Rect.fromCenter(
-            center: center.translate(0, unit * .75),
-            width: unit * 1.4,
-            height: unit),
-        0,
-        3.14,
-        false,
-        stroke);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

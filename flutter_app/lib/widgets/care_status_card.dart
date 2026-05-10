@@ -11,7 +11,8 @@ class CareStatusCard extends StatelessWidget {
         padding: EdgeInsets.all(20),
         child: Row(
           children: [
-            CircleAvatar(child: Icon(Icons.work_rounded)),
+            CircleAvatar(
+                backgroundImage: AssetImage('assets/caregiver pfp.png')),
             SizedBox(width: 16),
             Expanded(
               child: Column(

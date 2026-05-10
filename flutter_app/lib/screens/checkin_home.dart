@@ -10,6 +10,7 @@ import '../models/signup_form_data.dart';
 import '../services/audio_upload_service.dart';
 import '../services/checkin_api.dart';
 import '../services/checkin_notifications.dart';
+import '../services/session_store.dart';
 import 'caregiver_home_screen.dart';
 import 'family_screen.dart';
 import 'onboarding/welcome_screen.dart';
@@ -36,11 +37,12 @@ class _CheckInHomeState extends State<CheckInHome> {
   AppUser? _currentUser;
   final CheckInApi _api = CheckInApi();
   final CheckInAudioService _audioService = CheckInAudioService();
+  final CheckInSessionStore _sessionStore = CheckInSessionStore();
 
   @override
   void initState() {
     super.initState();
-    _loadFeed();
+    _restoreSession();
   }
 
   @override
@@ -64,6 +66,24 @@ class _CheckInHomeState extends State<CheckInHome> {
 
   void _go(AppScreen screen) {
     setState(() => _screen = screen);
+  }
+
+  Future<void> _restoreSession() async {
+    try {
+      final user = await _sessionStore.load();
+      if (!mounted || user == null) return;
+
+      _currentUser = user;
+      if (user.role == Role.caregiver) {
+        await _registerCaregiverNotifications(user.id);
+        await _loadFeed(caregiverId: user.id, replaceWithEmpty: true);
+        if (mounted) _go(AppScreen.caregiverHome);
+      } else {
+        _go(AppScreen.recorder);
+      }
+    } catch (_) {
+      // Stay signed out if the saved session cannot be read.
+    }
   }
 
   @override
@@ -100,6 +120,7 @@ class _CheckInHomeState extends State<CheckInHome> {
           messages: _caregiverMessages,
           onMessageDismissed: _dismissMessage,
           onFamily: () => _go(AppScreen.family),
+          onLogout: () => _logout(),
         );
       case AppScreen.message:
         return SimpleStatusScreen(
@@ -122,6 +143,7 @@ class _CheckInHomeState extends State<CheckInHome> {
         return RecorderScreen(
           isRecording: _isRecording,
           onToggleRecording: _toggleRecording,
+          onLogout: () => _logout(),
         );
     }
   }
@@ -134,7 +156,7 @@ class _CheckInHomeState extends State<CheckInHome> {
     _api
         .updateMessageStatus(
       messageId: message.id,
-      status: 'acknowledged',
+      status: 'resolved',
       actionTaken: 'Marked as handled from caregiver dashboard.',
     )
         .catchError((_) {
@@ -180,7 +202,7 @@ class _CheckInHomeState extends State<CheckInHome> {
         profileContext: data.profileContext,
         occupation: data.occupation,
       );
-      _currentUser = user;
+      await _rememberUser(user);
       if (user.role == Role.caregiver) {
         await _registerCaregiverNotifications(user.id);
         await _loadFeed(caregiverId: user.id, replaceWithEmpty: true);
@@ -201,7 +223,7 @@ class _CheckInHomeState extends State<CheckInHome> {
         _showError('This account is registered as a different role.');
         return;
       }
-      _currentUser = user;
+      await _rememberUser(user);
       if (user.role == Role.caregiver) {
         await _registerCaregiverNotifications(user.id);
         await _loadFeed(caregiverId: user.id, replaceWithEmpty: true);
@@ -212,6 +234,33 @@ class _CheckInHomeState extends State<CheckInHome> {
     } catch (error) {
       _showError(error.toString());
     }
+  }
+
+  Future<void> _rememberUser(AppUser user) async {
+    _currentUser = user;
+    try {
+      await _sessionStore.save(user);
+    } catch (_) {
+      // Keep the in-memory login even if persistence is unavailable.
+    }
+  }
+
+  Future<void> _logout() async {
+    try {
+      await _sessionStore.clear();
+    } catch (_) {
+      _showError('Could not log out. Please try again.');
+      return;
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _currentUser = null;
+      _isRecording = false;
+      _isSendingRecording = false;
+      _recordingPath = null;
+      _screen = AppScreen.welcome;
+    });
   }
 
   Future<void> _toggleRecording() async {
