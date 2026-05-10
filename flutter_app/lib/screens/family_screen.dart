@@ -62,7 +62,12 @@ class _FamilyScreenState extends State<FamilyScreen> {
                   fontWeight: FontWeight.w800,
                   height: 1.2)),
           const SizedBox(height: 22),
-          for (final member in _members) _FamilyMemberCard(member: member),
+          if (_members.isEmpty)
+            const Text('No family members added yet.',
+                style: TextStyle(
+                    fontSize: 15, color: Color(0xFF6B7280), height: 1.3))
+          else
+            for (final member in _members) _FamilyMemberCard(member: member),
           const SizedBox(height: 16),
           _AddMemberForm(
             userIdController: _userIdController,
@@ -191,7 +196,7 @@ class _AddMemberForm extends StatelessWidget {
           _FamilyInput(
               controller: nicknameController,
               label: 'Nickname',
-              hint: 'e.g. Grandma Mary'),
+              hint: 'e.g. Mum'),
           if (showValidation) ...[
             const SizedBox(height: 10),
             const Align(

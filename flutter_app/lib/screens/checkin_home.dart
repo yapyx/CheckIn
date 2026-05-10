@@ -28,9 +28,7 @@ class CheckInHome extends StatefulWidget {
 class _CheckInHomeState extends State<CheckInHome> {
   AppScreen _screen = AppScreen.welcome;
   List<CheckInMessage> _caregiverMessages = List.of(sampleMessages);
-  List<FamilyMember> _familyMembers = familyMembers
-      .map((name) => FamilyMember(userId: name, nickname: name))
-      .toList();
+  List<FamilyMember> _familyMembers = [];
   bool _isRecording = false;
   bool _isSendingRecording = false;
   String? _recordingPath;

@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../models/checkin_message.dart';
 
-const familyMembers = ['Grandpa Joe', 'Grandma Mary'];
-
 const sampleMessages = [
   CheckInMessage(
     id: 'critical',
@@ -36,7 +34,7 @@ const sampleMessages = [
     transcript:
         'I was just wondering if you are coming over for dinner today? I made your favorite chicken stew.',
     summary:
-        'Grandma Mary is checking dinner plans and would appreciate a response.',
+        'The senior is checking dinner plans and would appreciate a response.',
     intent: 'Routine Inquiry',
     mood: 'Anticipatory',
     priority: 'Warm',
