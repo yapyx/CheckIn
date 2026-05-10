@@ -152,61 +152,6 @@ See `functions/README.md` for detailed endpoint examples.
 - **Backend Integration:** Firebase SDK + REST API calls
 - **UI Library:** Material Design 3
 
-### User Flow Diagram
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                          CHECKIN APP                             │
-└─────────────────────────────────────────────────────────────────┘
-
-                    ┌──────────────────────┐
-                    │  ONBOARDING FLOW     │
-                    └──────────────────────┘
-                             │
-                             ├─ Sign Up (Senior or Caregiver)
-                             │   └─ Choose Role
-                             │   └─ Set Display Name
-                             │   └─ Set Profile Context (Seniors)
-                             │   └─ Create Password
-                             │
-                             ├─ Account Linking
-                             │   └─ Senior: Share Pairing Code
-                             │   └─ Caregiver: Enter Pairing Code
-                             │
-                             └─► Home Screen
-                                   │
-                    ┌──────────────┼──────────────┐
-                    │              │              │
-                    ↓              ↓              ↓
-         ┌─────────────────┐  ┌──────────────┐  ┌───────────────┐
-         │ SENIOR HOME     │  │ CAREGIVER    │  │  FAMILY LINK  │
-         │                 │  │  DASHBOARD   │  │  MANAGEMENT   │
-         │ • One-Button    │  │              │  │               │
-         │   Record Voice  │  │ • View msgs  │  │ • Link/unlink │
-         │ • Recording UI  │  │   by priority│  │   seniors     │
-         │ • Upload audio  │  │ • Mark read/ │  │               │
-         │ • Confirmation  │  │   resolved   │  │               │
-         │   screen        │  │ • Call senior│  │               │
-         │                 │  │ • View full  │  │               │
-         │                 │  │   transcript │  │               │
-         │                 │  │   & context  │  │               │
-         └─────────────────┘  └──────────────┘  └───────────────┘
-                    │              │              │
-                    │     ┌─────────┘              │
-                    │     │                        │
-                    └─────┼────────────────────────┘
-                          │
-                    ┌─────▼──────────┐
-                    │  MESSAGE DETAIL│
-                    │   SCREEN       │
-                    │                │
-                    │ • Full text    │
-                    │ • Play audio   │
-                    │ • Priority     │
-                    │ • Actions      │
-                    └────────────────┘
-```
-
 ### Key Screens
 1. **Onboarding** — Sign up & account linking flow
 2. **Senior Home Screen** — One-button voice recorder
@@ -224,7 +169,7 @@ See `functions/README.md` for detailed endpoint examples.
 
 ---
 
-## 🚀 Setup & Deployment
+## 🚀 How to use
 
 ### Prerequisites
 - **Node.js** 18+ (for Firebase CLI)
@@ -252,34 +197,7 @@ flutter pub get
 cd ..
 ```
 
-#### 2. Configure Environment
-
-**Backend (`functions/.env`)**
-```bash
-OPENAI_API_KEY=sk-...your-key...
-FIREBASE_PROJECT_ID=checkin-c4d3a
-GOOGLE_CLOUD_PROJECT=checkin-c4d3a
-```
-
-**Firebase Emulator** (optional, for local testing)
-```bash
-npm install -g firebase-tools
-firebase emulators:start
-```
-
-#### 3. Run Backend Locally
-
-```bash
-cd functions
-
-# Run tests
-python -m unittest discover -s tests
-
-# Run in emulator (with firebase-tools)
-firebase emulators:start
-```
-
-#### 4. Run Frontend
+#### 2. Run Frontend
 
 ```bash
 cd flutter_app
@@ -297,15 +215,7 @@ flutter run \
   --dart-define=FIREBASE_STORAGE_BUCKET=checkin-c4d3a.firebasestorage.app
 ```
 
-### Deploy to Firebase
-
-#### Backend (Cloud Functions)
-```bash
-cd functions
-firebase deploy --only functions --region asia-southeast1
-```
-
-#### Frontend (Android APK)
+#### Android APK
 ```bash
 cd flutter_app
 
@@ -320,8 +230,8 @@ flutter build apk --release \
 # APK location: flutter_app/build/app/outputs/flutter-apk/app-release.apk
 ```
 
-**Download APK:**  
-📱 **[Download CheckIn APK](https://placeholder-apk-download-url.com)** (Update with actual hosting URL)
+**OR Just Download the APK Here!:**  
+📱 **[Download CheckIn APK](https://drive.google.com/file/d/1hxQWSPkzqYwBtz-DevxJAqBj5cJC7sWE/view?usp=drive_link)** (Update with actual hosting URL)
 
 ---
 
@@ -344,20 +254,3 @@ flutter build apk --release \
 
 ---
 
-## 🧪 Testing
-
-```bash
-# Backend unit tests
-cd functions
-python -m unittest discover -s tests
-
-# Frontend widget tests
-cd flutter_app
-flutter test
-```
-
----
-
-## 📝 License
-
-Hackathon Project (OGP TheGoodHack)
