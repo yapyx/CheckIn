@@ -8,7 +8,7 @@ CheckIn is a voice-first communication bridge that turns a senior's voice messag
 
 ## 🎯 Problem Statement
 
-Working adult caregivers experience panic and workplace distraction when receiving missed calls from elderly parents, fearing emergencies. In reality, many calls are routine (e.g., asking about dinner). CheckIn bridges this uncertainty gap by:
+Working caregivers of elderly parents need to know what a missed call from their parent means during working hours. This results in anxiety that compounds throughout the workday, because every missed call looks the same - whether it is urgent, accidental, emotional or routine. CheckIn bridges this uncertainty gap by:
 
 - Automatically transcribing the senior's voice message
 - Analyzing it with AI triage
