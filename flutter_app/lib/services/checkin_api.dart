@@ -95,7 +95,7 @@ class CheckInApi {
 
   Future<List<CheckInMessage>> fetchFeed({
     required String caregiverId,
-    String status = 'unread',
+    String status = '',
     int limit = 20,
   }) async {
     final response = await _get('/messages/feed', {

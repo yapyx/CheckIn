@@ -34,6 +34,14 @@ class _FamilyScreenState extends State<FamilyScreen> {
   }
 
   @override
+  void didUpdateWidget(covariant FamilyScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.family != widget.family) {
+      _members = List.of(widget.family);
+    }
+  }
+
+  @override
   void dispose() {
     _userIdController.dispose();
     _nicknameController.dispose();
@@ -191,7 +199,7 @@ class _AddMemberForm extends StatelessWidget {
           _FamilyInput(
               controller: userIdController,
               label: 'Elderly User ID',
-              hint: 'e.g. CS-9942-88'),
+              hint: 'e.g. senior-4'),
           const SizedBox(height: 14),
           _FamilyInput(
               controller: nicknameController,

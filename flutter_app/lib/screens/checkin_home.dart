@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../data/sample_data.dart';
@@ -31,7 +33,9 @@ class _CheckInHomeState extends State<CheckInHome> {
   List<FamilyMember> _familyMembers = [];
   bool _isRecording = false;
   bool _isSendingRecording = false;
+  bool _isRefreshingCaregiverData = false;
   String? _recordingPath;
+  Timer? _caregiverRefreshTimer;
   AppUser? _currentUser;
   final CheckInApi _api = CheckInApi();
   final CheckInAudioService _audioService = CheckInAudioService();
@@ -45,6 +49,7 @@ class _CheckInHomeState extends State<CheckInHome> {
 
   @override
   void dispose() {
+    _caregiverRefreshTimer?.cancel();
     _audioService.dispose();
     super.dispose();
   }
@@ -53,13 +58,42 @@ class _CheckInHomeState extends State<CheckInHome> {
       {String caregiverId = 'demo-caregiver',
       bool replaceWithEmpty = false}) async {
     try {
-      final messages = await _api.fetchFeed(caregiverId: caregiverId);
+      final messages = _sortMessages(
+          await _api.fetchFeed(caregiverId: caregiverId));
+      if (!mounted) return;
+      final newFamilyMembers = _familyMembersFromMessages(messages);
       if (messages.isNotEmpty || replaceWithEmpty) {
-        setState(() => _caregiverMessages = messages);
+        setState(() {
+          _caregiverMessages = messages;
+          _familyMembers = [..._familyMembers, ...newFamilyMembers];
+        });
+      } else if (newFamilyMembers.isNotEmpty) {
+        setState(
+            () => _familyMembers = [..._familyMembers, ...newFamilyMembers]);
       }
     } catch (_) {
       // Keep sample data on any error (minimal change requirement).
     }
+  }
+
+  List<FamilyMember> _familyMembersFromMessages(List<CheckInMessage> messages) {
+    final existingIds = _familyMembers.map((member) => member.userId).toSet();
+    return messages
+        .map((message) => message.seniorId)
+        .where((seniorId) => seniorId.isNotEmpty && existingIds.add(seniorId))
+        .map((seniorId) => FamilyMember(userId: seniorId, nickname: seniorId))
+        .toList();
+  }
+
+  List<CheckInMessage> _sortMessages(List<CheckInMessage> messages) {
+    final sorted = List<CheckInMessage>.of(messages);
+    sorted.sort((a, b) {
+      final aResolved = a.status.toLowerCase() == 'resolved';
+      final bResolved = b.status.toLowerCase() == 'resolved';
+      if (aResolved == bResolved) return 0;
+      return aResolved ? 1 : -1;
+    });
+    return sorted;
   }
 
   void _go(AppScreen screen) {
@@ -75,8 +109,10 @@ class _CheckInHomeState extends State<CheckInHome> {
       if (user.role == Role.caregiver) {
         await _registerCaregiverNotifications(user.id);
         await _loadFeed(caregiverId: user.id, replaceWithEmpty: true);
+        _startCaregiverRefresh();
         if (mounted) _go(AppScreen.caregiverHome);
       } else {
+        _stopCaregiverRefresh();
         _go(AppScreen.recorder);
       }
     } catch (_) {
@@ -147,19 +183,20 @@ class _CheckInHomeState extends State<CheckInHome> {
   }
 
   void _dismissMessage(CheckInMessage message) {
-    setState(() {
-      _caregiverMessages =
-          _caregiverMessages.where((item) => item.id != message.id).toList();
-    });
     _api
         .updateMessageStatus(
       messageId: message.id,
       status: 'resolved',
       actionTaken: 'Marked as handled from caregiver dashboard.',
     )
+        .then((_) {
+      final caregiverId = _currentUser?.id;
+      if (caregiverId != null) {
+        _loadFeed(caregiverId: caregiverId, replaceWithEmpty: true);
+      }
+    })
         .catchError((_) {
       if (mounted) {
-        setState(() => _caregiverMessages = [..._caregiverMessages, message]);
         _showError('Could not update message status.');
       }
     });
@@ -204,8 +241,10 @@ class _CheckInHomeState extends State<CheckInHome> {
       if (user.role == Role.caregiver) {
         await _registerCaregiverNotifications(user.id);
         await _loadFeed(caregiverId: user.id, replaceWithEmpty: true);
+        _startCaregiverRefresh();
         _go(AppScreen.caregiverHome);
       } else {
+        _stopCaregiverRefresh();
         _go(AppScreen.recorder);
       }
     } catch (error) {
@@ -225,8 +264,10 @@ class _CheckInHomeState extends State<CheckInHome> {
       if (user.role == Role.caregiver) {
         await _registerCaregiverNotifications(user.id);
         await _loadFeed(caregiverId: user.id, replaceWithEmpty: true);
+        _startCaregiverRefresh();
         _go(AppScreen.caregiverHome);
       } else {
+        _stopCaregiverRefresh();
         _go(AppScreen.recorder);
       }
     } catch (error) {
@@ -252,6 +293,7 @@ class _CheckInHomeState extends State<CheckInHome> {
     }
 
     if (!mounted) return;
+    _stopCaregiverRefresh();
     setState(() {
       _currentUser = null;
       _isRecording = false;
@@ -259,6 +301,35 @@ class _CheckInHomeState extends State<CheckInHome> {
       _recordingPath = null;
       _screen = AppScreen.welcome;
     });
+  }
+
+  void _startCaregiverRefresh() {
+    _caregiverRefreshTimer?.cancel();
+    _caregiverRefreshTimer = Timer.periodic(
+      const Duration(seconds: 5),
+      (_) => _refreshCaregiverData(),
+    );
+  }
+
+  void _stopCaregiverRefresh() {
+    _caregiverRefreshTimer?.cancel();
+    _caregiverRefreshTimer = null;
+  }
+
+  Future<void> _refreshCaregiverData() async {
+    final user = _currentUser;
+    if (_isRefreshingCaregiverData ||
+        user == null ||
+        user.role != Role.caregiver) {
+      return;
+    }
+
+    _isRefreshingCaregiverData = true;
+    try {
+      await _loadFeed(caregiverId: user.id, replaceWithEmpty: true);
+    } finally {
+      _isRefreshingCaregiverData = false;
+    }
   }
 
   Future<void> _toggleRecording() async {
@@ -296,6 +367,7 @@ class _CheckInHomeState extends State<CheckInHome> {
             'Recorded audio upload did not return a storage path.');
       }
       _recordingPath = null;
+      if (mounted) _showMessageSentDialog();
     } catch (error) {
       _showError(error.toString());
     } finally {
@@ -303,6 +375,70 @@ class _CheckInHomeState extends State<CheckInHome> {
         setState(() => _isSendingRecording = false);
       }
     }
+  }
+
+  void _showMessageSentDialog() {
+    var dismissed = false;
+    showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        Future.delayed(const Duration(seconds: 5), () {
+          if (!dismissed && Navigator.of(dialogContext).canPop()) {
+            dismissed = true;
+            Navigator.of(dialogContext).pop();
+          }
+        });
+
+        return AlertDialog(
+          insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+          contentPadding: const EdgeInsets.fromLTRB(28, 34, 28, 28),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 132,
+                height: 132,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Color(0xFFE7F6EC),
+                ),
+                child: const Icon(Icons.check_rounded,
+                    size: 94, color: Color(0xFF198754)),
+              ),
+              const SizedBox(height: 24),
+              const Text('Message Sent',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF061D3B),
+                      height: 1.2)),
+              const SizedBox(height: 28),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    dismissed = true;
+                    Navigator.of(dialogContext).pop();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0B63C9),
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size.fromHeight(54),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(27)),
+                  ),
+                  child: const Text('Dismiss'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    ).then((_) => dismissed = true);
   }
 
   String get _seniorId {

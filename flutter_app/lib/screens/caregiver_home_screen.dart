@@ -41,8 +41,8 @@ class CaregiverHomeScreen extends StatelessWidget {
                     style: TextStyle(
                         color: Color(0xFF6B7280), fontSize: 14, height: 1.3)),
                 const SizedBox(height: 6),
-                Text('Hello, $userName!',
-                    style: const TextStyle(
+                const Text('Welcome!',
+                    style: TextStyle(
                         fontSize: 32,
                         fontWeight: FontWeight.w800,
                         color: Color(0xFF0B1F33),
@@ -205,6 +205,8 @@ class DashboardMessageCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isResolved = message.status.toLowerCase() == 'resolved';
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -275,7 +277,10 @@ class DashboardMessageCard extends StatelessWidget {
                                   fontWeight: FontWeight.w400,
                                   color: Color(0xFF4B5563),
                                   height: 1.55)),
-                          if (message.actionLabel != null) ...[
+                          if (isResolved) ...[
+                            const SizedBox(height: 16),
+                            const _ResolvedIndicator(),
+                          ] else if (message.actionLabel != null) ...[
                             const SizedBox(height: 16),
                             SizedBox(
                               width: double.infinity,
@@ -304,6 +309,36 @@ class DashboardMessageCard extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ResolvedIndicator extends StatelessWidget {
+  const _ResolvedIndicator();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE7F6EC),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFB7E2C2)),
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.check_circle_rounded,
+              size: 18, color: Color(0xFF198754)),
+          SizedBox(width: 6),
+          Text('Resolved',
+              style: TextStyle(
+                  color: Color(0xFF146C43),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  height: 1.2)),
+        ],
       ),
     );
   }

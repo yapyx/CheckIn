@@ -32,14 +32,11 @@ class SignupScreen extends StatefulWidget {
 class _SignupScreenState extends State<SignupScreen> {
   final TextEditingController _userIdController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _ageController = TextEditingController();
-  final TextEditingController _healthController = TextEditingController();
-  final TextEditingController _notesController = TextEditingController();
-  final TextEditingController _specializationsController =
+  final TextEditingController _confirmPasswordController =
       TextEditingController();
+  final TextEditingController _healthController = TextEditingController();
   bool _passwordVisible = false;
   bool _agreed = false;
-  String _occupation = 'Nurse';
 
   bool get _isSenior => widget.kind == RegistrationKind.senior;
 
@@ -47,10 +44,8 @@ class _SignupScreenState extends State<SignupScreen> {
   void dispose() {
     _userIdController.dispose();
     _passwordController.dispose();
-    _ageController.dispose();
+    _confirmPasswordController.dispose();
     _healthController.dispose();
-    _notesController.dispose();
-    _specializationsController.dispose();
     super.dispose();
   }
 
@@ -63,7 +58,10 @@ class _SignupScreenState extends State<SignupScreen> {
         children: [
           const BrandHeader(),
           const SizedBox(height: 24),
-          Text(_isSenior ? 'Join CheckIn' : 'Create Caregiver Account',
+          Text(
+              _isSenior
+                  ? 'Create Senior Account'
+                  : 'Create Caregiver Account',
               style: const TextStyle(
                   fontSize: 30,
                   fontWeight: FontWeight.w700,
@@ -109,21 +107,11 @@ class _SignupScreenState extends State<SignupScreen> {
           onPressed: () => setState(() => _passwordVisible = !_passwordVisible),
         ),
       ),
-      TextEntry(
-        controller: _ageController,
-        label: 'Age',
-        placeholder: 'e.g. 75',
-        keyboardType: TextInputType.number,
-      ),
+      _confirmPasswordField(),
       TextEntry(
         controller: _healthController,
         label: 'Health Conditions',
         placeholder: 'e.g. Hypertension, Diabetes',
-      ),
-      TextEntry(
-        controller: _notesController,
-        label: 'Notes / Other Information',
-        placeholder: 'Anything else we should know?',
       ),
     ];
   }
@@ -145,47 +133,7 @@ class _SignupScreenState extends State<SignupScreen> {
           onPressed: () => setState(() => _passwordVisible = !_passwordVisible),
         ),
       ),
-      Padding(
-        padding: const EdgeInsets.only(bottom: 16),
-        child: DropdownButtonFormField<String>(
-          initialValue: _occupation,
-          decoration: InputDecoration(
-            labelText: 'Occupation',
-            filled: true,
-            fillColor: Colors.white,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(18),
-              borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(18),
-              borderSide:
-                  const BorderSide(color: Color(0xFF0B63C9), width: 1.4),
-            ),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(18)),
-          ),
-          items: const [
-            DropdownMenuItem(value: 'Nurse', child: Text('Nurse')),
-            DropdownMenuItem(value: 'Doctor', child: Text('Doctor')),
-            DropdownMenuItem(value: 'Caregiver', child: Text('Caregiver')),
-            DropdownMenuItem(
-                value: 'Social Worker', child: Text('Social Worker')),
-            DropdownMenuItem(value: 'Volunteer', child: Text('Volunteer')),
-            DropdownMenuItem(
-                value: 'Family Member', child: Text('Family Member')),
-            DropdownMenuItem(value: 'Other', child: Text('Other')),
-          ],
-          onChanged: (value) =>
-              setState(() => _occupation = value ?? _occupation),
-        ),
-      ),
-      TextEntry(
-        controller: _specializationsController,
-        label: 'Others/Specializations',
-        placeholder: 'List certifications (e.g., Dementia Care)',
-      ),
+      _confirmPasswordField(),
       CheckboxListTile(
         value: _agreed,
         onChanged: (value) => setState(() => _agreed = value ?? false),
@@ -200,23 +148,39 @@ class _SignupScreenState extends State<SignupScreen> {
     ];
   }
 
+  Widget _confirmPasswordField() {
+    return TextEntry(
+      controller: _confirmPasswordController,
+      label: 'Confirm Password',
+      placeholder: 'Re-enter your password',
+      obscureText: !_passwordVisible,
+      suffixIcon: _PasswordToggle(
+        visible: _passwordVisible,
+        onPressed: () => setState(() => _passwordVisible = !_passwordVisible),
+      ),
+    );
+  }
+
   void _submit() {
+    final password = _passwordController.text.trim();
+    final confirmPassword = _confirmPasswordController.text.trim();
+    if (password != confirmPassword) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Passwords do not match.')),
+      );
+      return;
+    }
+
     final profileParts = <String>[
-      if (_ageController.text.trim().isNotEmpty)
-        'Age: ${_ageController.text.trim()}',
       if (_healthController.text.trim().isNotEmpty)
         'Health conditions: ${_healthController.text.trim()}',
-      if (_notesController.text.trim().isNotEmpty)
-        'Notes: ${_notesController.text.trim()}',
     ];
     widget.onCreate(SignupFormData(
       userId: _userIdController.text.trim(),
-      password: _passwordController.text.trim(),
+      password: password,
       displayName: _userIdController.text.trim(),
       profileContext: profileParts.join('\n'),
-      occupation: _isSenior
-          ? ''
-          : '$_occupation ${_specializationsController.text.trim()}'.trim(),
+      occupation: '',
     ));
   }
 }

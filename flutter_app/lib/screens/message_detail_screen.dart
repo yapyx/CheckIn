@@ -112,23 +112,6 @@ class _MessageDetailScreenState extends State<MessageDetailScreen> {
             onTogglePlay: _togglePlayback,
           ),
           const SizedBox(height: 28),
-          const Text('AI Analysis',
-              style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF0B1F33),
-                  letterSpacing: 1.1)),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                  child: _AnalysisTile(label: 'Intent', value: message.intent)),
-              const SizedBox(width: 12),
-              Expanded(
-                  child: _AnalysisTile(label: 'Mood', value: message.mood)),
-            ],
-          ),
-          const SizedBox(height: 28),
           const Text('Transcript',
               style: TextStyle(
                   fontSize: 18,
@@ -308,41 +291,6 @@ class _Waveform extends StatelessWidget {
             ),
           );
         }),
-      ),
-    );
-  }
-}
-
-class _AnalysisTile extends StatelessWidget {
-  const _AnalysisTile({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-          color: const Color(0xFFEAF3FF),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFFBDD8FF))),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label.toUpperCase(),
-              style: const TextStyle(
-                  color: Color(0xFF0B63C9),
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.1)),
-          const SizedBox(height: 8),
-          Text(value,
-              style: const TextStyle(
-                  fontSize: 19,
-                  color: Color(0xFF0B1F33),
-                  fontWeight: FontWeight.w800,
-                  height: 1.2)),
-        ],
       ),
     );
   }

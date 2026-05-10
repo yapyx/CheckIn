@@ -29,7 +29,7 @@ class CloudTasksRepeatScheduler:
         self.location = location or os.getenv("FUNCTION_REGION", "asia-southeast1")
         self.queue_id = queue_id or os.getenv("EMERGENCY_REPEAT_QUEUE", "emergency-repeat")
         self.target_url = target_url or os.getenv("EMERGENCY_REPEAT_URL") or self._default_target_url()
-        self.delay_seconds = delay_seconds or int(os.getenv("EMERGENCY_REPEAT_SECONDS", "10"))
+        self.delay_seconds = delay_seconds or int(os.getenv("EMERGENCY_REPEAT_SECONDS", "3"))
 
     def schedule(self, message_id: str) -> None:
         if not self.project_id or not self.target_url:

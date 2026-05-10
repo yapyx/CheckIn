@@ -37,7 +37,7 @@ class RecorderScreen extends StatelessWidget {
                 const SizedBox(width: 48),
                 const Expanded(
                   child: Text(
-                    'Talk to Sarah',
+                    'Talk to Caregiver',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                         fontSize: 24,
@@ -126,27 +126,27 @@ class _VoiceButton extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        width: 196,
-        height: 196,
+        width: 260,
+        height: 260,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: color,
           border: Border.all(color: ringColor, width: 8),
           boxShadow: const [
             BoxShadow(
-                color: Color(0x24000000), blurRadius: 18, offset: Offset(0, 8))
+                color: Color(0x24000000), blurRadius: 24, offset: Offset(0, 10))
           ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.mic_rounded, color: Colors.white, size: 58),
-            const SizedBox(height: 14),
+            const Icon(Icons.mic_rounded, color: Colors.white, size: 82),
+            const SizedBox(height: 18),
             Text(label,
                 style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
                     height: 1.2)),
           ],
         ),
@@ -180,13 +180,6 @@ class _SecuredFooter extends StatelessWidget {
                       color: Color(0xFF1A1A1A),
                       fontWeight: FontWeight.w800)),
             ],
-          ),
-          SizedBox(height: 14),
-          Text(
-            'Sarah will hear your message instantly.\nThis connection is private and safe.',
-            textAlign: TextAlign.center,
-            style:
-                TextStyle(fontSize: 13, color: Color(0xFF4B5563), height: 1.35),
           ),
         ],
       ),
