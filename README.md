@@ -59,8 +59,8 @@ CheckIn/
 - **Infrastructure:** Firebase (Firestore, Cloud Storage, Cloud Messaging)
 - **Compute:** Google Cloud Functions (Python 3.11+, region: `asia-southeast1`)
 - **AI Models:**
-  - **STT:** OpenAI Whisper Large V3 Turbo (with Singlish context injection)
-  - **Triage:** OpenAI GPT-5.5 Instant (RAG-based inference with senior's medical context)
+  - **STT:** OpenAI Whisper-1
+  - **Triage:** OpenAI GPT-5.5 
 
 ### Core Processing Pipeline
 
